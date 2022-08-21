@@ -551,6 +551,12 @@ var opSR8 = []opcode {
 var opSL8 = []opcode {
 	{modeImplicit, R08, 0x3B, 1}, {modeImplicit, R16, 0x3B, 2}, {modeImplicit, R24, 0x3B, 2},
 }
+var opXSL = []opcode {
+	{modeImplicit, R08, 0xBB, 1}, {modeImplicit, R16, 0xBB, 2}, {modeImplicit, R24, 0xBB, 2},
+}
+var opYSL = []opcode {
+	{modeImplicit, R08, 0xCB, 1}, {modeImplicit, R16, 0xCB, 2}, {modeImplicit, R24, 0xCB, 2},
+}
 var opADX = []opcode {
 	{modeImplicit, R08, 0xDB, 1}, {modeImplicit, R16, 0xDB, 2}, {modeImplicit, R24, 0xDB, 2},
 }
@@ -669,6 +675,8 @@ var mnemonics = []mnemonic {
 	{"adx", opADX},
 	{"ady", opADY},
 	{"axy", opAXY},
+	{"xsl", opXSL},
+	{"ysl", opYSL},
 	// threads
 	{"thr", opTHR},
 	{"thw", opTHW},

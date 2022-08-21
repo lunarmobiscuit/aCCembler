@@ -729,6 +729,14 @@ sub Test @$10000 {
 	sl8.w
 	sl8.t
 
+	xsl
+	xsl.w
+	xsl.t
+
+	ysl
+	ysl.w
+	ysl.t
+
 	adx
 	adx.w
 	adx.t
