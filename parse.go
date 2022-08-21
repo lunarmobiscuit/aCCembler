@@ -253,7 +253,7 @@ func (p *parser) parseCode(label string) error {
 				return err
 			}
 		} else {
-			return fmt.Errorf("'%s' is an unknown keyword/mnemonic in '%s'", token, label)
+			return fmt.Errorf("'%s' is an unknown keyword/mnemonic/label in '%s'", token, label)
 		}
 	}
 
@@ -285,7 +285,6 @@ func (p *parser) parseDataBlock(label string) error {
 		p.skipWhitespace()
 	} else {
 		address = p.endestAddr()
-fmt.Printf("DATA w/ no @address assigned @$%06x\n", address)
 	}
 
 	// Description of the data size comes next
@@ -338,7 +337,12 @@ fmt.Printf("DATA w/ no @address assigned @$%06x\n", address)
 fmt.Printf("DATA @$%06x\n", address)
 
 	// Parse the data
-	return p.parseData(size, label, block)
+	err := p.parseData(size, label, block)
+	if (err != nil) {
+		return err
+	}
+
+	return nil
 }
 
 /*
@@ -396,7 +400,45 @@ func (p *parser) parseData(size int, label string, block *dataBlock) error {
 				}
 			}
 		} else {
-			return fmt.Errorf("'%s' is an unknown data value in '%s'", token, label)
+			// Alphanumeric value but no quotes, and constants can't be strings
+			if size == DSTRING {
+				return fmt.Errorf("'%s' is an missing quotes in '%s'", token, label)
+			}
+
+			// Lookup value as contant, subroutine, or data block name
+			val, err := p.lookupConstant(token)
+			if (err != nil) {
+				sub := p.lookupSubroutineName(token)
+				if (sub != nil) {
+					val = sub.startAddr
+				} else {
+					data := p.lookupDataName(token)
+					if (data != nil) {
+						val = data.startAddr
+					} else {
+						return fmt.Errorf("'%s' is an unknown data value in '%s'", token, label)
+					}
+				}
+			}
+
+			switch size {
+			default:
+				if val > 0x0FF {
+					return fmt.Errorf("%d is bigger than 8-bits (in '%s')", val, label)
+				}
+				block.addData(R08, val, "", 1)
+			case R16:
+				if val > 0x0FFFF {
+					return fmt.Errorf("%d is bigger than 16-bits (in '%s')", val, label)
+				}
+				block.addData(R16, val, "", 2)
+			case R24:
+				if val > 0x0FFFFFF {
+					return fmt.Errorf("%d is bigger than 24-bits (in '%s')", val, label)
+				}
+				block.addData(R24, val, "", 3)
+			}
+
 		}
 	}
 
@@ -421,6 +463,7 @@ func (b *dataBlock) addData(size int, value int, str string, len int) {
 	data.value = value
 	data.string = str
 	data.len = len
+	b.endAddr += len
 
 	if (data.prev == nil) {
 		data.address = b.startAddr

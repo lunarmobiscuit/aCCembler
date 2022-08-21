@@ -70,7 +70,7 @@ var opJMP = []opcode {
 	{modeAbsoluteIndexedIndirectX, A16, 0x7C, 3}, {modeAbsoluteIndexedIndirectX, A24, 0x7C, 5},
 }
 var opJSR = []opcode {
-	{modeAbsolute, A16, 0x4C, 3}, {modeAbsolute, A24, 0x4C, 5},
+	{modeAbsolute, A16, 0x20, 3}, {modeAbsolute, A24, 0x20, 5},
 }
 var opRTI = []opcode {
 	{modeImplicit, A16, 0x40, 1}, {modeImplicit, A24, 0x40, 2},
@@ -797,14 +797,8 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		args.mode = modeRelative
 		if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
-			value, err := p.lookupConstant(symbol)
-			if (err == nil) {
-				args.value = value
-				args.hasValue = true
-			} else {
-				args.symbol = symbol
-				args.hasValue = false
-			}
+			args.symbol = symbol
+			args.hasValue = false
 		} else {
 			value, err := p.nextValue()
 			if (err != nil) {
@@ -948,12 +942,30 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
 			value, err := p.lookupConstant(symbol)
+if (symbol == "PWREDUP") { fmt.Printf("PWREDUP = %d %v\n", value, err) }
 			if (err == nil) {
 				args.value = value
 				args.hasValue = true
 			} else {
 				args.symbol = symbol
 				args.hasValue = false
+
+				// optional +offset (or -offset) to the specified label
+				p.skipWhitespace()
+				sym := p.peekChar()
+				if (sym == '+') || (sym == '-') {
+					p.skip(1)
+					p.skipWhitespace()
+					value, err := p.nextValue()
+					if (err != nil) {
+						return args, err
+					}
+					if (sym == '-') {
+						args.value -= value
+					} else {
+						args.value += value
+					}
+				}
 			}
 		} else {
 			value, err := p.nextValue()
@@ -977,7 +989,8 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		}
 
 		p.skipWhitespace()
-		if p.peekChar() == ',' {
+		sym := p.peekChar()
+		if sym == ',' {
 			p.skip(1)
 			p.skipWhitespace()
 			sym := p.peekChar()

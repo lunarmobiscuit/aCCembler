@@ -56,7 +56,7 @@ func (p *parser) resolveSymbols() error {
 				targetAddr, err := b.lookupInstructionLabel(i.symbol)
 				if (err == nil) {
 					i.hasValue = true
-					diff := targetAddr - i.address
+					diff := targetAddr - (i.address + i.len)
 					if (i.prefix == A16) && ((diff < -128) || (diff > 127)) {
 						return fmt.Errorf("%s target %s is %d bytes apart, too far for 8-bit branch", mnemonics[i.mnemonic].name, i.symbol, diff)
 					} else if (i.prefix == A24) && ((diff < -32768) || (diff > 32767)) {
@@ -71,7 +71,7 @@ func (p *parser) resolveSymbols() error {
 				v, err := b.lookupInstructionLabel(i.symbol)
 				if (err == nil) {
 					i.hasValue = true
-					i.value = v
+					i.value = v + i.value
 				} else {
 					s := p.lookupSubroutineName(i.symbol)
 					if (s != nil) {
@@ -81,12 +81,26 @@ func (p *parser) resolveSymbols() error {
 						d := p.lookupDataName(i.symbol)
 						if (d != nil) {
 							i.hasValue = true
-							i.value = d.startAddr
+							i.value = d.startAddr + i.value
 						}
 					}
 				}
 
 				// Modify the address mode if the length is shorter or longer than expected
+				if (i.addressMode == modeImmediate) {
+					if (i.value <= 0x0FF) {
+						i.prefix |= R08
+					} else if (i.value <= 0x0FFFF) {
+						i.prefix |= R16
+					} else if (i.value <= 0x0FFFFFF) {
+						i.prefix |= R24
+					} else {
+						return fmt.Errorf("the symbol '%s' resolved to a value too large for #%d", i.symbol, i.value)
+					}
+				}
+
+
+				// The symbol was not resolved
 				if i.hasValue == false {
 					// the symbol was not found
 					return fmt.Errorf("the symbol '%s' was not found", i.symbol)
@@ -369,7 +383,7 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 							e.value & 0x0FF, (e.value >> 8) & 0x0FF, (e.value >> 16) & 0x0FF)
 					bytes[0] = byte(e.value & 0x0FF)
 					bytes[1] = byte((e.value >> 8) & 0x0FF)
-					bytes[1] = byte((e.value >> 16) & 0x0FF)
+					bytes[2] = byte((e.value >> 16) & 0x0FF)
 				case DSTRING:
 					for s := 0; s < len(e.string); s++ {
 						line += fmt.Sprintf("%02x ", e.string[s])

@@ -14,7 +14,7 @@ func (p *parser) lookupConstant(name string) (int, error) {
 	name = strings.ToLower(name)
 
 	// Iterate through all the constants
-	for c := p.cnst; c != p.lastCnst; c = c.next {
+	for c := p.cnst; c != nil; c = c.next {
 		if (c.name == name) {
 			return c.value, nil
 		}
@@ -33,7 +33,7 @@ func (p *parser) lookupSubroutineName(symbol string) *codeBlock {
 
 	// Try all the code blocks
 	for b := p.code; b != nil; b = b.next {
-		if b.name == symbol {
+		if strings.ToLower(b.name) == symbol {
 			return b
 		}
 	}
@@ -46,9 +46,12 @@ func (p *parser) lookupSubroutineName(symbol string) *codeBlock {
  *  Lookup symbol as a label in the code block
  */
 func (b *codeBlock) lookupInstructionLabel(symbol string) (int, error) {
+	// Case insensitive
+	symbol = strings.ToLower(symbol)
+
 	// Look at every code entry
 	for i := b.instr; i != nil; i = i.next {
-		if (i.mnemonic == 0) && (i.symbol == symbol) {
+		if (i.mnemonic == 0) && (strings.ToLower(i.symbol) == symbol) {
 			return i.address, nil
 		}
 	}
@@ -66,7 +69,7 @@ func (p *parser) lookupDataName(symbol string) *dataBlock {
 
 	// Try all the data blocks
 	for d := p.data; d != nil; d = d.next {
-		if d.name == symbol {
+		if strings.ToLower(d.name) == symbol {
 			return d
 		}
 	}
