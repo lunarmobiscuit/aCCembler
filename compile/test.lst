@@ -1,0 +1,73 @@
+ff0000 ; SUB start:
+ff0000 d8                 cld
+ff0001 a9 00              lda #$0
+ff0003 a5 01              lda $01
+ff0005 b2 02              lda ($02)
+ff0007 aa                 tax
+ff0008 4f 8d 56 34 12     sta.a24 $123456
+ff000d 1f 8d 34 12        sta.w $001234
+ff0011 5f 8d 02 00 10     sta.w.a24 $100002
+ff0016 6f 8d 03 00 20     sta.t.a24 $200003
+ff001b 4f 4c 21 00 ff     jmp.a24 $ff0021
+ff0020 ea                 nop
+
+ff0021 ; SUB title:
+ff0021                  foo:
+ff0021 ea                 nop
+ff0022 25 01              and $01
+ff0024                  bar:
+ff0024 09 0f              ora #$f
+ff0026 2f 29 80 84 1e     and.t #$1e8480
+ff002b 55 0f              eor $0f,X
+ff002d dd ff ff           cmp $ffff,X
+ff0030 4f 4c 36 00 ff     jmp.a24 $ff0036
+ff0035 ea                 nop
+ff0036                  elsewhere:
+ff0036 d8                 cld
+
+ff0037 ; DATA Bytes:
+ff0037 00
+ff0038 01
+ff0039 02
+ff003a 03
+ff003b 04
+ff003c 05
+ff003d 06
+ff003e 07
+ff003f 08
+ff0040 09
+ff0041 0a
+ff0042 0b
+ff0043 0c
+ff0044 0d
+ff0045 0e
+ff0046 0f
+
+ff0047 ; DATA Words:
+ff0047 00 00
+ff0049 01 10
+ff004b 02 20
+ff004d 03 30
+ff004f 10 00
+ff0051 40 1f
+ff0053 80 3e
+
+ff0055 ; DATA TwentyFours:
+ff0055 00 00 a0
+ff0058 01 10 b0
+ff005b 02 20 c0
+ff005e 03 30 d0
+ff0061 04 40 e0
+ff0064 05 50 f0
+ff0067 00 7d 00
+ff006a 00 fa 00
+ff006d 40 42 0f
+
+; 1936 BYTES of FILLER
+
+ff0800 ; DATA Text:
+ff0800 6f 6e 65 00
+ff0804 74 77 6f 00
+ff0808 74 68 72 65 65 00
+ff080e 74 68 65 20 71 75 69 63 6b 20 62 72 6f 77 6e 20 66 6f 78 00
+

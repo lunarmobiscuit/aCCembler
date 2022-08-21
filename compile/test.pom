@@ -1,0 +1,66 @@
+/*
+ * Constants
+ */
+const one = 1
+const fifteen = $F
+const SIX5535 = $FFFF
+const Six5536 = $10000
+const million = 1000000
+const another_one = one
+
+/*
+ * Code block
+ */
+sub Start @$FF0000 { // C-style comment
+	cld
+	lda #$0
+	lda $1
+	lda ($2)
+	tax
+	sta $123456		; asm-style comment
+	sta.w $1234		; 16-bit value / 16-bit address
+	sta.w $100002	; 16-bit value / 24-bit address
+	sta.t $200003	; 24-bit value / 24-bit address
+	jmp Title
+	nop
+}
+
+/*
+ * More code
+ */
+sub Title {
+ foo:
+	nop
+	and one
+ bar:
+	ora #fifteen
+	and #2000000
+	eor fifteen,X
+	cmp six5535,X
+	jmp elsewhere
+	nop
+ elsewhere:
+   cld
+}
+
+/*
+ * Example data blocks
+ */
+data Bytes byte {
+	$00, $01, $02, $03, $04, $05, $06, $07
+	$08, $09, $0a, $0b, $0c, $0d, $0e, $0f
+}
+
+data Words word {
+	$0000, $1001, $2002, $3003
+	16, 8000, 16000
+}
+data TwentyFours u24 {
+	$a00000, $b01001, $c02002, $d03003, $e04004, $f05005
+	32000, 64000, 1000000
+}
+data Text @$FF0800 string {
+	"one", "two", "three"
+	"the quick brown fox"
+}
+

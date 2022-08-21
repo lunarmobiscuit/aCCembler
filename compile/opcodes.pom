@@ -1,0 +1,766 @@
+/*
+ * Test *all* of the opcodes
+ */
+sub Test @$10000 {
+	nop
+
+	brk
+	
+	jmp $1234
+	jmp $123456
+	jmp ($3456)
+	jmp ($345678)
+	jmp ($4567,x)
+	jmp ($456789,x)
+	
+	jsr $1234
+	jsr $123456
+	
+	rti
+	rti.a24
+	
+	rts
+	rts.a24
+	
+	pha
+	pha.w
+	pha.t
+	
+	php
+	
+	pla
+	pla.16
+	pla.24
+	
+	plp
+	
+	phx
+	phx.w
+	phx.t
+	
+	phy
+	phy.w
+	phy.t
+	
+	plx
+	plx.16
+	plx.24
+	
+	ply
+	ply.16
+	ply.24
+
+	ora #$12
+	ora #$1234
+	ora #$123456
+	ora $12
+	ora.w $12
+	ora.t $12
+	ora $12,x
+	ora.w $12,x
+	ora.t $12,x
+	ora $1234
+	ora $123456
+	ora.w $1234
+	ora.w $123456
+	ora.t $1234
+	ora.t $123456
+	ora.w $1234,x
+	ora.w $123456,x
+	ora.t $1234,x
+	ora.t $123456,x
+	ora.w $1234,y
+	ora.w $123456,y
+	ora.t $1234,y
+	ora.t $123456,y
+	ora ($12,x)
+	ora.w ($12,x)
+	ora.t ($12,x)
+	ora ($12),y
+	ora.w ($12),y
+	ora.t ($12),y
+	ora ($12)
+	ora.w ($12)
+	ora.t ($12)
+
+	and #$12
+	and #$1234
+	and #$123456
+	and $12
+	and.w $12
+	and.t $12
+	and $12,x
+	and.w $12,x
+	and.t $12,x
+	and $1234
+	and $123456
+	and.w $1234
+	and.w $123456
+	and.t $1234
+	and.t $123456
+	and.w $1234,x
+	and.w $123456,x
+	and.t $1234,x
+	and.t $123456,x
+	and.w $1234,y
+	and.w $123456,y
+	and.t $1234,y
+	and.t $123456,y
+	and ($12,x)
+	and.w ($12,x)
+	and.t ($12,x)
+	and ($12),y
+	and.w ($12),y
+	and.t ($12),y
+	and ($12)
+	and.w ($12)
+	and.t ($12)
+
+	eor #$12
+	eor #$1234
+	eor #$123456
+	eor $12
+	eor.w $12
+	eor.t $12
+	eor $12,x
+	eor.w $12,x
+	eor.t $12,x
+	eor $1234
+	eor $123456
+	eor.w $1234
+	eor.w $123456
+	eor.t $1234
+	eor.t $123456
+	eor.w $1234,x
+	eor.w $123456,x
+	eor.t $1234,x
+	eor.t $123456,x
+	eor.w $1234,y
+	eor.w $123456,y
+	eor.t $1234,y
+	eor.t $123456,y
+	eor ($12,x)
+	eor.w ($12,x)
+	eor.t ($12,x)
+	eor ($12),y
+	eor.w ($12),y
+	eor.t ($12),y
+	eor ($12)
+	eor.w ($12)
+	eor.t ($12)
+
+	adc #$12
+	adc #$1234
+	adc #$123456
+	adc $12
+	adc.w $12
+	adc.t $12
+	adc $12,x
+	adc.w $12,x
+	adc.t $12,x
+	adc $1234
+	adc $123456
+	adc.w $1234
+	adc.w $123456
+	adc.t $1234
+	adc.t $123456
+	adc.w $1234,x
+	adc.w $123456,x
+	adc.t $1234,x
+	adc.t $123456,x
+	adc.w $1234,y
+	adc.w $123456,y
+	adc.t $1234,y
+	adc.t $123456,y
+	adc ($12,x)
+	adc.w ($12,x)
+	adc.t ($12,x)
+	adc ($12),y
+	adc.w ($12),y
+	adc.t ($12),y
+	adc ($12)
+	adc.w ($12)
+	adc.t ($12)
+
+	sbc #$12
+	sbc #$1234
+	sbc #$123456
+	sbc $12
+	sbc.w $12
+	sbc.t $12
+	sbc $12,x
+	sbc.w $12,x
+	sbc.t $12,x
+	sbc $1234
+	sbc $123456
+	sbc.w $1234
+	sbc.w $123456
+	sbc.t $1234
+	sbc.t $123456
+	sbc.w $1234,x
+	sbc.w $123456,x
+	sbc.t $1234,x
+	sbc.t $123456,x
+	sbc.w $1234,y
+	sbc.w $123456,y
+	sbc.t $1234,y
+	sbc.t $123456,y
+	sbc ($12,x)
+	sbc.w ($12,x)
+	sbc.t ($12,x)
+	sbc ($12),y
+	sbc.w ($12),y
+	sbc.t ($12),y
+	sbc ($12)
+	sbc.w ($12)
+	sbc.t ($12)
+
+	bit #$12
+	bit #$1234
+	bit #$123456
+	bit $12
+	bit.w $12
+	bit.t $12
+	bit $12,x
+	bit.w $12,x
+	bit.t $12,x
+	bit $1234
+	bit $123456
+	bit.w $1234
+	bit.w $123456
+	bit.t $1234
+	bit.t $123456
+	bit.w $1234,x
+	bit.w $123456,x
+	bit.t $1234,x
+	bit.t $123456,x
+
+	cmp #$12
+	cmp #$1234
+	cmp #$123456
+	cmp $12
+	cmp.w $12
+	cmp.t $12
+	cmp $12,x
+	cmp.w $12,x
+	cmp.t $12,x
+	cmp $1234
+	cmp $123456
+	cmp.w $1234
+	cmp.w $123456
+	cmp.t $1234
+	cmp.t $123456
+	cmp.w $1234,x
+	cmp.w $123456,x
+	cmp.t $1234,x
+	cmp.t $123456,x
+	cmp.w $1234,y
+	cmp.w $123456,y
+	cmp.t $1234,y
+	cmp.t $123456,y
+	cmp ($12,x)
+	cmp.w ($12,x)
+	cmp.t ($12,x)
+	cmp ($12),y
+	cmp.w ($12),y
+	cmp.t ($12),y
+	cmp ($12)
+	cmp.w ($12)
+	cmp.t ($12)
+
+	cpx #$12
+	cpx #$1234
+	cpx #$123456
+	cpx $12
+	cpx.w $12
+	cpx.t $12
+	cpx $1234
+	cpx $123456
+	cpx.w $1234
+	cpx.w $123456
+	cpx.t $1234
+	cpx.t $123456
+
+	cpy #$12
+	cpy #$1234
+	cpy #$123456
+	cpy $12
+	cpy.w $12
+	cpy.t $12
+	cpy $1234
+	cpy $123456
+	cpy.w $1234
+	cpy.w $123456
+	cpy.t $1234
+	cpy.t $123456
+
+	rol
+	rol.w
+	rol.t
+	rol $12
+	rol.w $12
+	rol.t $12
+	rol $12,x
+	rol.w $12,x
+	rol.t $12,x
+	rol $1234
+	rol $123456
+	rol.w $1234
+	rol.w $123456
+	rol.t $1234
+	rol.t $123456
+	rol.w $1234,x
+	rol.w $123456,x
+	rol.t $1234,x
+	rol.t $123456,x
+
+	ror
+	ror.w
+	ror.t
+	ror $12
+	ror.w $12
+	ror.t $12
+	ror $12,x
+	ror.w $12,x
+	ror.t $12,x
+	ror $1234
+	ror $123456
+	ror.w $1234
+	ror.w $123456
+	ror.t $1234
+	ror.t $123456
+	ror.w $1234,x
+	ror.w $123456,x
+	ror.t $1234,x
+	ror.t $123456,x
+
+	lsr
+	lsr.w
+	lsr.t
+	lsr $12
+	lsr.w $12
+	lsr.t $12
+	lsr $12,x
+	lsr.w $12,x
+	lsr.t $12,x
+	lsr $1234
+	lsr $123456
+	lsr.w $1234
+	lsr.w $123456
+	lsr.t $1234
+	lsr.t $123456
+	lsr.w $1234,x
+	lsr.w $123456,x
+	lsr.t $1234,x
+	lsr.t $123456,x
+
+	asl
+	asl.w
+	asl.t
+	asl $12
+	asl.w $12
+	asl.t $12
+	asl $12,x
+	asl.w $12,x
+	asl.t $12,x
+	asl $1234
+	asl $123456
+	asl.w $1234
+	asl.w $123456
+	asl.t $1234
+	asl.t $123456
+	asl.w $1234,x
+	asl.w $123456,x
+	asl.t $1234,x
+	asl.t $123456,x
+
+	lsr
+	lsr.w
+	lsr.t
+	lsr $12
+	lsr.w $12
+	lsr.t $12
+	lsr $12,x
+	lsr.w $12,x
+	lsr.t $12,x
+	lsr $1234
+	lsr $123456
+	lsr.w $1234
+	lsr.w $123456
+	lsr.t $1234
+	lsr.t $123456
+	lsr.w $1234,x
+	lsr.w $123456,x
+	lsr.t $1234,x
+	lsr.t $123456,x
+
+	sec
+	sed
+	sei
+	clc
+	cld
+	cli
+	clv
+
+	inc
+	inc.w
+	inc.t
+	inc $12
+	inc.w $12
+	inc.t $12
+	inc $12,x
+	inc.w $12,x
+	inc.t $12,x
+	inc $1234
+	inc $123456
+	inc.w $1234
+	inc.w $123456
+	inc.t $1234
+	inc.t $123456
+	inc.w $1234,x
+	inc.w $123456,x
+	inc.t $1234,x
+	inc.t $123456,x
+
+	dec
+	dec.w
+	dec.t
+	dec $12
+	dec.w $12
+	dec.t $12
+	dec $12,x
+	dec.w $12,x
+	dec.t $12,x
+	dec $1234
+	dec $123456
+	dec.w $1234
+	dec.w $123456
+	dec.t $1234
+	dec.t $123456
+	dec.w $1234,x
+	dec.w $123456,x
+	dec.t $1234,x
+	dec.t $123456,x
+
+	inx
+	inx.w
+	inx.t
+
+	dex
+	dex.w
+	dex.t
+
+	iny
+	iny.w
+	iny.t
+
+	dey
+	dey.w
+	dey.t
+
+	tax
+	tax.w
+	tax.t
+
+	txa
+	txa.w
+	txa.t
+
+	tay
+	tay.w
+	tay.t
+
+	tya
+	tya.w
+	tya.t
+
+	tsx
+	tsx.w
+	tsx.t
+
+	txs
+	txs.w
+	txs.t
+
+	lda #$12
+	lda #$1234
+	lda #$123456
+	lda $12
+	lda.w $12
+	lda.t $12
+	lda $12,x
+	lda.w $12,x
+	lda.t $12,x
+	lda $1234
+	lda $123456
+	lda.w $1234
+	lda.w $123456
+	lda.t $1234
+	lda.t $123456
+	lda.w $1234,x
+	lda.w $123456,x
+	lda.t $1234,x
+	lda.t $123456,x
+	lda.w $1234,y
+	lda.w $123456,y
+	lda.t $1234,y
+	lda.t $123456,y
+	lda ($12,x)
+	lda.w ($12,x)
+	lda.t ($12,x)
+	lda ($12),y
+	lda.w ($12),y
+	lda.t ($12),y
+	lda ($12)
+	lda.w ($12)
+	lda.t ($12)
+
+	sta $12
+	sta.w $12
+	sta.t $12
+	sta $12,x
+	sta.w $12,x
+	sta.t $12,x
+	sta $1234
+	sta $123456
+	sta.w $1234
+	sta.w $123456
+	sta.t $1234
+	sta.t $123456
+	sta.w $1234,x
+	sta.w $123456,x
+	sta.t $1234,x
+	sta.t $123456,x
+	sta.w $1234,y
+	sta.w $123456,y
+	sta.t $1234,y
+	sta.t $123456,y
+	sta ($12,x)
+	sta.w ($12,x)
+	sta.t ($12,x)
+	sta ($12),y
+	sta.w ($12),y
+	sta.t ($12),y
+	sta ($12)
+	sta.w ($12)
+	sta.t ($12)
+
+	ldx #$12
+	ldx #$1234
+	ldx #$123456
+	ldx $12
+	ldx.w $12
+	ldx.t $12
+	ldx $12,y
+	ldx.w $12,y
+	ldx.t $12,y
+	ldx $1234
+	ldx $123456
+	ldx.w $1234
+	ldx.w $123456
+	ldx.t $1234
+	ldx.t $123456
+	ldx.w $1234,y
+	ldx.w $123456,y
+	ldx.t $1234,y
+	ldx.t $123456,y
+
+	stx $12
+	stx.w $12
+	stx.t $12
+	stx $12,y
+	stx.w $12,y
+	stx.t $12,y
+	stx $1234
+	stx $123456
+	stx.w $1234
+	stx.w $123456
+	stx.t $1234
+	stx.t $123456
+
+	ldy #$12
+	ldy #$1234
+	ldy #$123456
+	ldy $12
+	ldy.w $12
+	ldy.t $12
+	ldy $12,x
+	ldy.w $12,x
+	ldy.t $12,x
+	ldy $1234
+	ldy $123456
+	ldy.w $1234
+	ldy.w $123456
+	ldy.t $1234
+	ldy.t $123456
+	ldy.w $1234,x
+	ldy.w $123456,x
+	ldy.t $1234,x
+	ldy.t $123456,x
+
+	sty $12
+	sty.w $12
+	sty.t $12
+	sty $12,x
+	sty.w $12,x
+	sty.t $12,x
+	sty $1234
+	sty $123456
+	sty.w $1234
+	sty.w $123456
+	sty.t $1234
+	sty.t $123456
+
+	bcc +3
+	bcc -3
+	bcc +129
+	bcc -129
+
+	bcs +3
+	bcs -3
+	bcs +129
+	bcs -129
+
+	bne +3
+	bne -3
+	bne +129
+	bne -129
+
+	beq +3
+	beq -3
+	beq +129
+	beq -129
+
+	bpl +3
+	bpl -3
+	bpl +129
+	bpl -129
+
+	bmi +3
+	bmi -3
+	bmi +129
+	bmi -129
+
+	bge +3
+	bge -3
+	bge +129
+	bge -129
+
+	blt +3
+	blt -3
+	blt +129
+	blt -129
+
+	bvc +3
+	bvc -3
+	bvc +129
+	bvc -129
+
+	bvs +3
+	bvs -3
+	bvs +129
+	bvs -129
+
+	bra +3
+	bra -3
+	bra +129
+	bra -129
+
+	stz $12
+	stz.w $12
+	stz.t $12
+	stz $12,x
+	stz.w $12,x
+	stz.t $12,x
+	stz $1234
+	stz $123456
+	stz.w $1234
+	stz.w $123456
+	stz.t $1234
+	stz.t $123456
+	stz $1234,x
+	stz $123456,x
+	stz.w $1234,x
+	stz.w $123456,x
+	stz.t $1234,x
+	stz.t $123456,x
+
+	trb $12
+	trb.w $12
+	trb.t $12
+	trb $1234
+	trb $123456
+	trb.w $1234
+	trb.w $123456
+	trb.t $1234
+	trb.t $123456
+
+	tsb $12
+	tsb.w $12
+	tsb.t $12
+	tsb $1234
+	tsb $123456
+	tsb.w $1234
+	tsb.w $123456
+	tsb.t $1234
+	tsb.t $123456
+
+	cpu
+	a24
+	r16
+	r24
+	w16
+	w24
+	sws
+
+	sr4
+	sr4.w
+	sr4.t
+
+	sl4
+	sl4.w
+	sl4.t
+
+	sr8
+	sr8.w
+	sr8.t
+
+	sl8
+	sl8.w
+	sl8.t
+
+	adx
+	adx.w
+	adx.t
+
+	ady
+	ady.w
+	ady.t
+
+	axy
+	axy.w
+	axy.t
+
+	thr
+	thw
+	thy
+
+	thi $1234
+	thi $123456
+
+	tta
+	tta.w
+	tta.t
+
+	tat
+	tat.w
+	tat.t
+
+	tts
+	tts.w
+	tts.t
+
+	tst
+	tst.w
+	tst.t
+}
