@@ -5,47 +5,47 @@ sub Test @$10000 {
 	nop
 
 	brk
-	
+
 	jmp $1234
 	jmp $123456
 	jmp ($3456)
 	jmp ($345678)
 	jmp ($4567,x)
 	jmp ($456789,x)
-	
+
 	jsr $1234
 	jsr $123456
-	
+
 	rti
 	rti.a24
-	
+
 	rts
 	rts.a24
-	
+
 	pha
 	pha.w
 	pha.t
-	
+
 	php
-	
+
 	pla
 	pla.16
 	pla.24
-	
+
 	plp
-	
+
 	phx
 	phx.w
 	phx.t
-	
+
 	phy
 	phy.w
 	phy.t
-	
+
 	plx
 	plx.16
 	plx.24
-	
+
 	ply
 	ply.16
 	ply.24
