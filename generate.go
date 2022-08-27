@@ -46,6 +46,11 @@ func (p *parser) resolveSymbols() error {
 				continue
 			}
 
+			// Skip comments and expressions
+			if (i.comment != nil) || (i.expr != nil) {
+				continue
+			}
+
 			// Skip implicit
 			if (i.addressMode == modeImplicit) {
 				continue
@@ -88,13 +93,8 @@ func (p *parser) resolveSymbols() error {
 
 				// Modify the address mode if the length is shorter or longer than expected
 				if (i.addressMode == modeImmediate) {
-					if (i.value <= 0x0FF) {
-						i.prefix |= R08
-					} else if (i.value <= 0x0FFFF) {
-						i.prefix |= R16
-					} else if (i.value <= 0x0FFFFFF) {
-						i.prefix |= R24
-					} else {
+					i.prefix |= valueToPrefix(i.value)
+					if (i.prefix & R32 == R32) {
 						return fmt.Errorf("the symbol '%s' resolved to a value too large for #%d", i.symbol, i.value)
 					}
 				}
@@ -187,7 +187,8 @@ func (p *parser) checkAddressRanges() error {
 		if (p.data != nil) {
 			if (p.data.startAddr < p.code.startAddr) {
 				return fmt.Errorf("The lowest address must be code SUB '%s' @$%06x-$%06x rather than DATA '%s' @$%06x-$%06x and there is no auto sort",
-					b.name, b.startAddr, b.endAddr, d.name, d.startAddr, d.endAddr)
+					p.code.name, p.code.startAddr, p.code.endAddr,
+					p.data.name, p.data.startAddr, p.data.endAddr)
 			}
 		}
 	}
@@ -201,6 +202,23 @@ func (p *parser) checkAddressRanges() error {
  *  Output the code and data
  */
 func (p *parser) outputCode(out *os.File, listing *os.File) error {
+	// Dump the global variables at the top
+	for v := p.global; v != nil; v = v.next {
+		size := "       "
+		switch (v.size & R32) {
+		case R16: size = fmt.Sprintf("-%06x", v.address+1)
+		case R24: size = fmt.Sprintf("-%06x",  v.address+2)
+		}
+		variable := fmt.Sprintf("%06x%s   ; GLOBAL @%s\n", v.address, size, v.name)
+		out.WriteString(variable)
+		fmt.Printf(variable)
+
+	}
+	if (p.global != nil) {
+		out.WriteString("\n")
+		fmt.Printf("\n")
+	}
+
 	// Walk through two linked lists in ascending order of addresses
 	b := p.code
 	d := p.data
@@ -227,131 +245,191 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 			listing.WriteString(sub)
 			fmt.Printf(sub)
 
+			// Dump the local variables
+			for v := b.vrbl; v != nil; v = v.next {
+				size := "       "
+				switch (v.size & R32) {
+				case R16: size = fmt.Sprintf("-%06x", v.address+1)
+				case R24: size = fmt.Sprintf("-%06x",  v.address+2)
+				}
+				variable := fmt.Sprintf("%06x%s   ; VAR @%s\n", v.address, size, v.name)
+				out.WriteString(variable)
+				fmt.Printf(variable)
+			}
+
 			// Loop through all the instructions
 			for i := b.instr; i != nil; i = i.next {
 				line := fmt.Sprintf("%06x ", i.address)
 				bytes := make([]byte, 16)
 				byteIdx := 0
 
+				// Comments
+				if (i.comment != nil) {
+					c := i.comment
+					line += fmt.Sprintf("                  ; %s", c.comment)
+				// Expression
+				} else if (i.expr != nil) {
+					// Format the expression
+					e := i.expr
+					line += "                  ; "
+					switch (e.dest.location) {
+					case MEMORY: line += fmt.Sprintf("M@$%0x", e.dest.addrval)
+					case VARIABLE: line += fmt.Sprintf("V@$%0x", e.dest.addrval)
+					case VALUE: return fmt.Errorf("the left side of an expression can not be a value (%x)", e.dest.addrval)
+					case REG_A: line += fmt.Sprintf("A")
+					case REG_X: line += fmt.Sprintf("X")
+					case REG_Y: line += fmt.Sprintf("Y")
+					}
+					line += fmt.Sprintf("%s ", sizeToSuffix(e.dest.size))
+					switch (e.equalOp) {
+					case EQUALS: line += fmt.Sprintf("= ")
+					case PLUS: line += fmt.Sprintf("+= ")
+					case MINUS: line += fmt.Sprintf("-= ")
+					case AND: line += fmt.Sprintf("&= ")
+					case OR: line += fmt.Sprintf("|= ")
+					case EOR: line += fmt.Sprintf("^= ")
+					case SHIFT_LEFT: line += fmt.Sprintf("<<= ")
+					case SHIFT_RIGHT: line += fmt.Sprintf("<<= ")
+					}
+					switch (e.src1.location) {
+					case MEMORY: line += fmt.Sprintf("M@$%0x", e.src1.addrval)
+					case VARIABLE: line += fmt.Sprintf("V@$%0x", e.src1.addrval)
+					case VALUE: line += fmt.Sprintf("%d", e.src1.addrval)
+					case REG_A: line += fmt.Sprintf("A")
+					case REG_X: line += fmt.Sprintf("X")
+					case REG_Y: line += fmt.Sprintf("Y")
+					}
+					line += fmt.Sprintf("%s ", sizeToSuffix(e.src1.size))
+					if (e.op != NO_OP) {
+						switch (e.op) {
+						case PLUS: line += fmt.Sprintf("+ ")
+						case MINUS: line += fmt.Sprintf("- ")
+						case AND: line += fmt.Sprintf("& ")
+						case OR: line += fmt.Sprintf("| ")
+						case EOR: line += fmt.Sprintf("^ ")
+						case SHIFT_LEFT: line += fmt.Sprintf("<< ")
+						case SHIFT_RIGHT: line += fmt.Sprintf("<< ")
+						}
+						switch (e.src2.location) {
+						case MEMORY: line += fmt.Sprintf("M@$%0x", e.src2.addrval)
+						case VARIABLE: line += fmt.Sprintf("V@$%0x", e.src2.addrval)
+						case VALUE: line += fmt.Sprintf("%d", e.src2.addrval)
+						case REG_A: line += fmt.Sprintf("A")
+						case REG_X: line += fmt.Sprintf("X")
+						case REG_Y: line += fmt.Sprintf("Y")
+						}
+						line += fmt.Sprintf("%s ", sizeToSuffix(e.src2.size))
+					}
+				} else if (i.mnemonic == 0) {
 				// Label
-				if (i.mnemonic == 0) {
 					line += fmt.Sprintf("                 %s:\n", i.symbol)
 					listing.WriteString(line)
 					fmt.Printf(line)
 					continue
-				}
-
-				// Prefix code
-				opcodes := ""
-				len := i.len
-				if (i.prefix > A16) {
-					opcodes += fmt.Sprintf("%02x ", i.prefix)
-					bytes[byteIdx] = byte(i.prefix & 0xff); byteIdx += 1;
+				} else {
+				// Mnemonic
+					// Prefix code
+					opcodes := ""
+					len := i.len
+					if (i.prefix > A16) {
+						opcodes += fmt.Sprintf("%02x ", i.prefix)
+						bytes[byteIdx] = byte(i.prefix & 0xff); byteIdx += 1;
+						len -= 1
+					}
+					// Machine opcode
+					opcodes += fmt.Sprintf("%02x ", i.opcode)
+					bytes[byteIdx] = byte(i.opcode & 0xff); byteIdx += 1;
 					len -= 1
+
+					// Value
+					if len > 3 {
+						return fmt.Errorf("*** the length for %s is %d, too long", mnemonics[i.mnemonic].name, i.len)
+					} else if len >= 3 {
+						opcodes += fmt.Sprintf("%02x %02x %02x ",
+							i.value & 0xff, (i.value >> 8) & 0xff, (i.value >> 16) & 0xff)
+						bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
+						bytes[byteIdx] = byte((i.value >> 8) & 0xff); byteIdx += 1;
+						bytes[byteIdx] = byte((i.value >> 16) & 0xff); byteIdx += 1;
+					} else if len == 2 {
+						opcodes += fmt.Sprintf("%02x %02x ", i.value & 0xff, (i.value >> 8) & 0xff)
+						bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
+						bytes[byteIdx] = byte((i.value >> 8) & 0xff); byteIdx += 1;
+					} else if len == 1 {
+						opcodes += fmt.Sprintf("%02x ", i.value & 0xff)
+						bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
+					}
+
+					// Assembly code mneumonic
+					spaces := "                    "
+					line += fmt.Sprintf("%s%s %s", opcodes, spaces[:18-(i.len*3)], mnemonics[i.mnemonic].name)
+
+					// Suffix
+					line += sizeToSuffix(i.prefix)
+
+					// Arguments
+					args := ""
+					switch (i.addressMode) {
+					default: args += fmt.Sprintf(" ???%d/%x", i.addressMode, i.value)
+					case modeImplicit:
+					case modeImmediate:
+						args += fmt.Sprintf(" #$%x", i.value)
+					case modeZeroPage:
+						args += fmt.Sprintf(" $%02x", i.value)
+					case modeZeroPageX:
+						args += fmt.Sprintf(" $%02x,X", i.value)
+					case modeZeroPageY:
+						args += fmt.Sprintf(" $%02x,Y", i.value)
+					case modeRelative:
+						if (i.value < 0) {
+							args += fmt.Sprintf(" %d", i.value)
+						} else {
+							args += fmt.Sprintf(" +%d", i.value)
+						}
+					case modeAbsolute:
+						if (i.prefix == A16) {
+							args += fmt.Sprintf(" $%04x", i.value)
+						} else {
+							args += fmt.Sprintf(" $%06x", i.value)
+						}
+					case modeAbsoluteX:
+						if (i.prefix == A16) {
+							args += fmt.Sprintf(" $%04x,X", i.value)
+						} else {
+							args += fmt.Sprintf(" $%06x,X", i.value)
+						}
+					case modeAbsoluteY:
+						if (i.prefix == A16) {
+							args += fmt.Sprintf(" $%04x,Y", i.value)
+						} else {
+							args += fmt.Sprintf(" $%06x,Y", i.value)
+						}
+					case modeIndirect:
+						if (i.prefix == A16) {
+							args += fmt.Sprintf(" ($%04x)", i.value)
+						} else {
+							args += fmt.Sprintf(" ($%06x)", i.value)
+						}
+					case modeIndexedIndirectX:
+						args += fmt.Sprintf(" ($%02x,X)", i.value & 0xff)
+					case modeIndirectIndexedY:
+						args += fmt.Sprintf(" ($%02x),Y", i.value & 0xff)
+					case modeIndirectZeroPage:
+						args += fmt.Sprintf(" ($%02x)", i.value & 0xff)
+					case modeAbsoluteIndexedIndirectX:
+						if (i.prefix == A16) {
+							args += fmt.Sprintf(" ($%04x,X)", i.value)
+						} else {
+							args += fmt.Sprintf(" ($%06x,X)", i.value)
+						}
+					}
+					line += args
 				}
-				// Machine opcode
-				opcodes += fmt.Sprintf("%02x ", i.opcode)
-				bytes[byteIdx] = byte(i.opcode & 0xff); byteIdx += 1;
-				len -= 1
 
-				// Value
-				if len > 3 {
-					return fmt.Errorf("*** the length for %s is %d, too long", mnemonics[i.mnemonic].name, i.len)
-				} else if len >= 3 {
-					opcodes += fmt.Sprintf("%02x %02x %02x ",
-						i.value & 0xff, (i.value >> 8) & 0xff, (i.value >> 16) & 0xff)
-					bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
-					bytes[byteIdx] = byte((i.value >> 8) & 0xff); byteIdx += 1;
-					bytes[byteIdx] = byte((i.value >> 16) & 0xff); byteIdx += 1;
-				} else if len == 2 {
-					opcodes += fmt.Sprintf("%02x %02x ", i.value & 0xff, (i.value >> 8) & 0xff)
-					bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
-					bytes[byteIdx] = byte((i.value >> 8) & 0xff); byteIdx += 1;
-				} else if len == 1 {
-					opcodes += fmt.Sprintf("%02x ", i.value & 0xff)
-					bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
-				}
-
-				// Assembly code mneumonic
-				spaces := "                    "
-				line += fmt.Sprintf("%s%s %s", opcodes, spaces[:18-(i.len*3)], mnemonics[i.mnemonic].name)
-
-				// Suffix
-				if (i.prefix != A16) {
-					if (i.prefix == R16) || (i.prefix == W16) {
-						line += ".w"
-					} else if (i.prefix == R24) || (i.prefix == W24) {
-						line += ".t"
-					}
-					if (i.prefix & A24) == A24 {
-						line += ".a24"
-					}
-				}
-
-				// Arguments
-				args := ""
-				switch (i.addressMode) {
-				case modeImplicit:
-				case modeImmediate:
-					args += fmt.Sprintf(" #$%x", i.value)
-				case modeZeroPage:
-					args += fmt.Sprintf(" $%02x", i.value)
-				case modeZeroPageX:
-					args += fmt.Sprintf(" $%02x,X", i.value)
-				case modeZeroPageY:
-					args += fmt.Sprintf(" $%02x,Y", i.value)
-				case modeRelative:
-					if (i.value < 0) {
-						args += fmt.Sprintf(" %d", i.value)
-					} else {
-						args += fmt.Sprintf(" +%d", i.value)
-					}
-				case modeAbsolute:
-					if (i.prefix == A16) {
-						args += fmt.Sprintf(" $%04x", i.value)
-					} else {
-						args += fmt.Sprintf(" $%06x", i.value)
-					}
-				case modeAbsoluteX:
-					if (i.prefix == A16) {
-						args += fmt.Sprintf(" $%04x,X", i.value)
-					} else {
-						args += fmt.Sprintf(" $%06x,X", i.value)
-					}
-				case modeAbsoluteY:
-					if (i.prefix == A16) {
-						args += fmt.Sprintf(" $%04x,Y", i.value)
-					} else {
-						args += fmt.Sprintf(" $%06x,Y", i.value)
-					}
-				case modeIndirect:
-					if (i.prefix == A16) {
-						args += fmt.Sprintf(" ($%04x)", i.value)
-					} else {
-						args += fmt.Sprintf(" ($%06x)", i.value)
-					}
-				case modeIndexedIndirectX:
-					args += fmt.Sprintf(" ($%02x,X)", i.value & 0xff)
-				case modeIndirectIndexedY:
-					args += fmt.Sprintf(" ($%02x),Y", i.value & 0xff)
-				case modeIndirectZeroPage:
-					args += fmt.Sprintf(" ($%02x)", i.value & 0xff)
-				case modeAbsoluteIndexedIndirectX:
-					if (i.prefix == A16) {
-						args += fmt.Sprintf(" ($%04x,X)", i.value)
-					} else {
-						args += fmt.Sprintf(" ($%06x,X)", i.value)
-					}
-				}
-				line += args + "\n"
-
+				line += "\n"
 				listing.WriteString(line)
 				out.Write(bytes[:byteIdx])
 				fmt.Printf(line)
 			}
-
-			listing.WriteString("\n")
-			fmt.Printf("\n")
 
 			b = b.next
 		} else {
@@ -419,7 +497,7 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 func (p *parser) outputFiller(length int, out *os.File, listing *os.File) {
 	bytes := make([]byte, length)
 	for j := range bytes { bytes[j] = 0x88 }
-	filler := fmt.Sprintf("; %d BYTES of FILLER\n\n", length)
+	filler := fmt.Sprintf("\n; %d BYTES of FILLER\n\n", length)
 	listing.WriteString(filler)
 	fmt.Printf(filler)
 	out.Write(bytes)

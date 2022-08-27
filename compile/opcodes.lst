@@ -648,48 +648,42 @@
 010858 5f                 w16
 010859 6f                 w24
 01085a fc                 sws
-01085b 0b                 sr4
-01085c 1f 0b              sr4.w
-01085e 2f 0b              sr4.t
-010860 1b                 sl4
-010861 1f 1b              sl4.w
-010863 2f 1b              sl4.t
-010865 2b                 sr8
-010866 1f 2b              sr8.w
-010868 2f 2b              sr8.t
-01086a 3b                 sl8
-01086b 1f 3b              sl8.w
-01086d 2f 3b              sl8.t
-01086f bb                 xsl
-010870 1f bb              xsl.w
-010872 2f bb              xsl.t
-010874 cb                 ysl
-010875 1f cb              ysl.w
-010877 2f cb              ysl.t
-010879 db                 adx
-01087a 1f db              adx.w
-01087c 2f db              adx.t
-01087e eb                 ady
-01087f 1f eb              ady.w
-010881 2f eb              ady.t
-010883 fb                 axy
-010884 1f fb              axy.w
-010886 2f fb              axy.t
-010888 03                 thr
-010889 13                 thw
-01088a 23                 thy
-01088b 33 34 12           thi $1234
-01088e 4f 33 56 34        thi.a24 $123456
-010892 43                 tta
-010893 1f 43              tta.w
-010895 2f 43              tta.t
-010897 53                 tat
-010898 1f 53              tat.w
-01089a 2f 53              tat.t
-01089c 63                 tts
-01089d 1f 63              tts.w
-01089f 2f 63              tts.t
-0108a1 73                 tst
-0108a2 1f 73              tst.w
-0108a4 2f 73              tst.t
+01085b 0b                 sl8
+01085c 1f 0b              sl8.w
+01085e 2f 0b              sl8.t
+010860 1b                 sr8
+010861 1f 1b              sr8.w
+010863 2f 1b              sr8.t
+010865 2b                 xsl
+010866 1f 2b              xsl.w
+010868 2f 2b              xsl.t
+01086a 3b                 ysl
+01086b 1f 3b              ysl.w
+01086d 2f 3b              ysl.t
+01086f db                 adx
+010870 1f db              adx.w
+010872 2f db              adx.t
+010874 eb                 ady
+010875 1f eb              ady.w
+010877 2f eb              ady.t
+010879 fb                 axy
+01087a 1f fb              axy.w
+01087c 2f fb              axy.t
+01087e 03                 thr
+01087f 13                 thw
+010880 23                 thy
+010881 33 34 12           thi $1234
+010884 4f 33 56 34        thi.a24 $123456
+010888 43                 tta
+010889 1f 43              tta.w
+01088b 2f 43              tta.t
+01088d 53                 tat
+01088e 1f 53              tat.w
+010890 2f 53              tat.t
+010892 63                 tts
+010893 1f 63              tts.w
+010895 2f 63              tts.t
+010897 73                 tst
+010898 1f 73              tst.w
+01089a 2f 73              tst.t
 

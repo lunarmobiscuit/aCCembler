@@ -21,8 +21,15 @@ type parser struct {
 	cnst		*cnst			// linked list of constants
 	lastCnst	*cnst
 
+	global		*vrbl			// linked list of constants
+	lastGlobal	*vrbl
+
 	code		*codeBlock		// linked list of subroutine blocks
 	lastCode	*codeBlock
+
+	lastAsz		int				// the size the last time A was touched
+	lastXsz		int				//                      ^ X
+	lastYsz		int				//                      ^ Y
 
 	data		*dataBlock		// linked list of data items
 	lastData	*dataBlock
@@ -32,7 +39,17 @@ type parser struct {
 type cnst struct {
 	next		*cnst			// next in the linked list
 	name		string
+	nameLC		string
 	value		int
+}
+
+// Linked list of global variables
+type vrbl struct {
+	next		*vrbl			// next in the linked list
+	name		string
+	nameLC		string
+	address		int
+	size		int
 }
 
 // Linked list of code blocks
@@ -42,6 +59,10 @@ type codeBlock struct {
 	startAddr	int
 	endAddr		int
 	name		string
+	nameLC		string
+
+	vrbl		*vrbl			// linked list of local-to-the-block variables
+	lastVrbl	*vrbl
 
 	instr		*instruction	// linked list of instructions (parsed but not yet encoded)
 	lastInstr	*instruction
@@ -61,6 +82,31 @@ type instruction struct {
 	value		int
 	len			int
 	address		int
+	// optional comment
+	comment		*comment
+	// optional expression
+	expr		*expression
+}
+
+// Unit within an instruction
+type comment struct {
+	comment		string
+}
+
+// Unit within an expression
+type eunit struct {
+	location	int
+	addrval		int
+	size		int
+}
+
+// Details of an expressions
+type expression struct {
+	dest		eunit
+	src1		eunit
+	src2		eunit
+	equalOp		int
+	op			int
 }
 
 // Linked list of code blocks
@@ -70,6 +116,7 @@ type dataBlock struct {
 	startAddr	int
 	endAddr		int
 	name		string
+	nameLC		string
 
 	data		*data			// linked list of data entries
 	lastData	*data

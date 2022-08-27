@@ -11,11 +11,11 @@ import (
  */
 func (p *parser) lookupConstant(name string) (int, error) {
 	// Case insensitive
-	name = strings.ToLower(name)
+	nameLC := strings.ToLower(name)
 
 	// Iterate through all the constants
 	for c := p.cnst; c != nil; c = c.next {
-		if (c.name == name) {
+		if (c.nameLC == nameLC) {
 			return c.value, nil
 		}
 	}
@@ -25,15 +25,42 @@ func (p *parser) lookupConstant(name string) (int, error) {
 }
 
 /*
+ *  Lookup variable address
+ */
+func (p *parser) lookupVariable(b *codeBlock, name string) (int, int, error) {
+	// Case insensitive
+	nameLC := strings.ToLower(name)
+
+	// Iterate through all the global variables
+	for v := p.global; v != nil; v = v.next {
+		if (v.nameLC == nameLC) {
+			return v.address, v.size, nil
+		}
+	}
+
+	// Iterate through the variables in the specified block
+	if (b != nil) {
+		for v := b.vrbl; v != nil; v = v.next {
+			if (v.nameLC == nameLC) {
+				return v.address, v.size, nil
+			}
+		}
+	}
+
+	// Not found
+	return 0, 0, fmt.Errorf("variable '%s' not defined", name)
+}
+
+/*
  *  Lookup symbol value as a subroutine block name
  */
 func (p *parser) lookupSubroutineName(symbol string) *codeBlock {
 	// Case insensitive
-	symbol = strings.ToLower(symbol)
+	symbolLC := strings.ToLower(symbol)
 
 	// Try all the code blocks
 	for b := p.code; b != nil; b = b.next {
-		if strings.ToLower(b.name) == symbol {
+		if b.nameLC == symbolLC {
 			return b
 		}
 	}
@@ -47,11 +74,11 @@ func (p *parser) lookupSubroutineName(symbol string) *codeBlock {
  */
 func (b *codeBlock) lookupInstructionLabel(symbol string) (int, error) {
 	// Case insensitive
-	symbol = strings.ToLower(symbol)
+	symbolLC := strings.ToLower(symbol)
 
 	// Look at every code entry
 	for i := b.instr; i != nil; i = i.next {
-		if (i.mnemonic == 0) && (strings.ToLower(i.symbol) == symbol) {
+		if (i.mnemonic == 0) && (i.symbol == symbolLC) {
 			return i.address, nil
 		}
 	}
@@ -63,13 +90,13 @@ func (b *codeBlock) lookupInstructionLabel(symbol string) (int, error) {
 /*
  *  Lookup symbol value as a data block name
  */
-func (p *parser) lookupDataName(symbol string) *dataBlock {
+func (p *parser) lookupDataName(name string) *dataBlock {
 	// Case insensitive
-	symbol = strings.ToLower(symbol)
+	nameLC := strings.ToLower(name)
 
 	// Try all the data blocks
 	for d := p.data; d != nil; d = d.next {
-		if strings.ToLower(d.name) == symbol {
+		if d.nameLC == nameLC {
 			return d
 		}
 	}

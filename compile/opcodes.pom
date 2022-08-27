@@ -713,21 +713,13 @@ sub Test @$10000 {
 	w24
 	sws
 
-	sr4
-	sr4.w
-	sr4.t
-
-	sl4
-	sl4.w
-	sl4.t
+	sl8
+	sl8.w
+	sl8.t
 
 	sr8
 	sr8.w
 	sr8.t
-
-	sl8
-	sl8.w
-	sl8.t
 
 	xsl
 	xsl.w

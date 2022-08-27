@@ -310,6 +310,50 @@ func (p *parser) peekAhead(k int) uint8 {
 	return p.b[p.i+k]
 }
 
+/*
+ *  Determine the correct prefix for the size of the address or value
+ */
+func addressToPrefix(v int) int {
+	if (v <= 0x0FFFF) {
+		return A16
+	} else if (v <= 0x0FFFFFF) {
+		return A24
+	} else {
+		return A32
+	}
+}
+func valueToPrefix(v int) int {
+	if (v <= 0x0FF) {
+		return R08
+	} else if (v <= 0x0FFFF) {
+		return R16
+	} else if (v <= 0x0FFFFFF) {
+		return R24
+	} else {
+		return R32
+	}
+}
+
+/*
+ *  Turn the size into a string
+ */
+func sizeToSuffix(sz int) string {
+	suffix := ""
+	if (sz != A16) {
+		if (sz == R16) || (sz == W16) {
+			suffix += ".w"
+		} else if (sz == R24) || (sz == W24) {
+			suffix += ".t"
+		}
+		if (sz & A24) == A24 {
+			suffix += ".a24"
+		}
+	}
+
+	return suffix
+}
+
+
 // Stringer
 func (p *parser) String() string {
 	return fmt.Sprintf("b[%d] i%d n%d\n", p.end, p.i, p.n)

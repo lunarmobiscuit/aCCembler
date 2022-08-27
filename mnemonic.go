@@ -50,6 +50,7 @@ const (
 type mnemonic struct {
 	name	string		// the 3-letter mnemonic
 	opcode	[]opcode	// the list of valid opcodes
+	reg		int			// which register is touched
 }
 type opcode struct {
 	mode	int			// the valid addressing mode
@@ -376,10 +377,10 @@ var opTAY = []opcode {
 var opTYA = []opcode {
 	{modeImplicit, R08, 0x98, 1}, {modeImplicit, R16, 0x98, 2}, {modeImplicit, R24, 0x98, 2},
 }
-var opTSX = []opcode {
+var opTXS = []opcode {
 	{modeImplicit, R08, 0x9A, 1}, {modeImplicit, R16, 0x9A, 2}, {modeImplicit, R24, 0x9A, 2},
 }
-var opTXS = []opcode {
+var opTSX = []opcode {
 	{modeImplicit, R08, 0xBA, 1}, {modeImplicit, R16, 0xBA, 2}, {modeImplicit, R24, 0xBA, 2},
 }
 var opLDA = []opcode {
@@ -539,23 +540,17 @@ var opW24 = []opcode {
 var opSWS = []opcode {
 	{modeImplicit, A16, 0xFC, 1},
 }
-var opSR4 = []opcode {
+var opSL8 = []opcode {
 	{modeImplicit, R08, 0x0B, 1}, {modeImplicit, R16, 0x0B, 2}, {modeImplicit, R24, 0x0B, 2},
 }
-var opSL4 = []opcode {
+var opSR8 = []opcode {
 	{modeImplicit, R08, 0x1B, 1}, {modeImplicit, R16, 0x1B, 2}, {modeImplicit, R24, 0x1B, 2},
 }
-var opSR8 = []opcode {
+var opXSL = []opcode {
 	{modeImplicit, R08, 0x2B, 1}, {modeImplicit, R16, 0x2B, 2}, {modeImplicit, R24, 0x2B, 2},
 }
-var opSL8 = []opcode {
-	{modeImplicit, R08, 0x3B, 1}, {modeImplicit, R16, 0x3B, 2}, {modeImplicit, R24, 0x3B, 2},
-}
-var opXSL = []opcode {
-	{modeImplicit, R08, 0xBB, 1}, {modeImplicit, R16, 0xBB, 2}, {modeImplicit, R24, 0xBB, 2},
-}
 var opYSL = []opcode {
-	{modeImplicit, R08, 0xCB, 1}, {modeImplicit, R16, 0xCB, 2}, {modeImplicit, R24, 0xCB, 2},
+	{modeImplicit, R08, 0x3B, 1}, {modeImplicit, R16, 0x3B, 2}, {modeImplicit, R24, 0x3B, 2},
 }
 var opADX = []opcode {
 	{modeImplicit, R08, 0xDB, 1}, {modeImplicit, R16, 0xDB, 2}, {modeImplicit, R24, 0xDB, 2},
@@ -592,100 +587,98 @@ var opTST = []opcode {
 }
 
 var mnemonics = []mnemonic {
-	{":", nil}, // used to store labels
-	{"nop", opNOP},
-	{"brk", opBRK},
-	{"jmp", opJMP},
-	{"jsr", opJSR},
-	{"rti", opRTI},
-	{"rts", opRTS},
-	{"pha", opPHA},
-	{"php", opPHP},
-	{"pla", opPLA},
-	{"plp", opPLP},
-	{"ora", opORA},
-	{"and", opAND},
-	{"eor", opEOR},
-	{"adc", opADC},
-	{"sbc", opSBC},
-	{"bit", opBIT},
-	{"cmp", opCMP},
-	{"cpx", opCPX},
-	{"cpy", opCPY},
-	{"rol", opROL},
-	{"ror", opROR},
-	{"asl", opASL},
-	{"lsr", opLSR},
-	{"sec", opSEC},
-	{"sed", opSED},
-	{"sei", opSEI},
-	{"clc", opCLC},
-	{"cld", opCLD},
-	{"cli", opCLI},
-	{"clv", opCLV},
-	{"inc", opINC},
-	{"dec", opDEC},
-	{"inx", opINX},
-	{"iny", opINY},
-	{"dex", opDEX},
-	{"dey", opDEY},
-	{"tax", opTAX},
-	{"tay", opTAY},
-	{"txa", opTXA},
-	{"tya", opTYA},
-	{"txs", opTXS},
-	{"tsx", opTSX},
-	{"lda", opLDA},
-	{"sta", opSTA},
-	{"ldx", opLDX},
-	{"stx", opSTX},
-	{"ldy", opLDY},
-	{"sty", opSTY},
-	{"bcc", opBCC},
-	{"bcs", opBCS},
-	{"bne", opBNE},
-	{"beq", opBEQ},
-	{"bpl", opBPL},
-	{"bmi", opBMI},
-	{"bge", opBGE},
-	{"blt", opBLT},
-	{"bvc", opBVC},
-	{"bvs", opBVS},
+	{":", nil, N_A}, // used to store labels
+	{"nop", opNOP, N_A},
+	{"brk", opBRK, N_A},
+	{"jmp", opJMP, N_A},
+	{"jsr", opJSR, N_A},
+	{"rti", opRTI, N_A},
+	{"rts", opRTS, N_A},
+	{"pha", opPHA, REG_A},
+	{"php", opPHP, N_A},
+	{"pla", opPLA, REG_A},
+	{"plp", opPLP, N_A},
+	{"ora", opORA, REG_A},
+	{"and", opAND, REG_A},
+	{"eor", opEOR, REG_A},
+	{"adc", opADC, REG_A},
+	{"sbc", opSBC, REG_A},
+	{"bit", opBIT, REG_A},
+	{"cmp", opCMP, REG_A},
+	{"cpx", opCPX, REG_X},
+	{"cpy", opCPY, REG_Y},
+	{"rol", opROL, REG_A},
+	{"ror", opROR, REG_A},
+	{"asl", opASL, REG_A},
+	{"lsr", opLSR, REG_A},
+	{"sec", opSEC, N_A},
+	{"sed", opSED, N_A},
+	{"sei", opSEI, N_A},
+	{"clc", opCLC, N_A},
+	{"cld", opCLD, N_A},
+	{"cli", opCLI, N_A},
+	{"clv", opCLV, N_A},
+	{"inc", opINC, REG_A},
+	{"dec", opDEC, REG_A},
+	{"inx", opINX, REG_X},
+	{"iny", opINY, REG_Y},
+	{"dex", opDEX, REG_X},
+	{"dey", opDEY, REG_Y},
+	{"tax", opTAX, REG_X},
+	{"tay", opTAY, REG_Y},
+	{"txa", opTXA, REG_A},
+	{"tya", opTYA, REG_A},
+	{"txs", opTXS, N_A},
+	{"tsx", opTSX, N_A},
+	{"lda", opLDA, REG_A},
+	{"sta", opSTA, REG_A},
+	{"ldx", opLDX, REG_X},
+	{"stx", opSTX, REG_X},
+	{"ldy", opLDY, REG_Y},
+	{"sty", opSTY, REG_Y},
+	{"bcc", opBCC, N_A},
+	{"bcs", opBCS, N_A},
+	{"bne", opBNE, N_A},
+	{"beq", opBEQ, N_A},
+	{"bpl", opBPL, N_A},
+	{"bmi", opBMI, N_A},
+	{"bge", opBGE, N_A},
+	{"blt", opBLT, N_A},
+	{"bvc", opBVC, N_A},
+	{"bvs", opBVS, N_A},
 	// 65C02
-	{"bra", opBRA},
-	{"phx", opPHX},
-	{"phy", opPHY},
-	{"plx", opPLX},
-	{"ply", opPLY},
-	{"stz", opSTZ},
-	{"trb", opTRB},
-	{"tsb", opTSB},
+	{"bra", opBRA, N_A},
+	{"phx", opPHX, REG_X},
+	{"phy", opPHY, REG_Y},
+	{"plx", opPLX, REG_X},
+	{"ply", opPLY, REG_Y},
+	{"stz", opSTZ, N_A},
+	{"trb", opTRB, N_A},
+	{"tsb", opTSB, N_A},
 	// 6524T8
-	{"cpu", opCPU},
-	{"a24", opA24},
-	{"r16", opR16},
-	{"r24", opR24},
-	{"w16", opW16},
-	{"w24", opW24},
-	{"sws", opSWS},
-	{"sr4", opSR4},
-	{"sl4", opSL4},
-	{"sr8", opSR8},
-	{"sl8", opSL8},
-	{"adx", opADX},
-	{"ady", opADY},
-	{"axy", opAXY},
-	{"xsl", opXSL},
-	{"ysl", opYSL},
+	{"cpu", opCPU, N_A},
+	{"a24", opA24, N_A},
+	{"r16", opR16, N_A},
+	{"r24", opR24, N_A},
+	{"w16", opW16, N_A},
+	{"w24", opW24, N_A},
+	{"sws", opSWS, N_A},
+	{"sl8", opSL8, REG_A},
+	{"sr8", opSR8, REG_A},
+	{"adx", opADX, REG_A},
+	{"ady", opADY, REG_A},
+	{"axy", opAXY, REG_A},
+	{"xsl", opXSL, REG_X},
+	{"ysl", opYSL, REG_Y},
 	// threads
-	{"thr", opTHR},
-	{"thw", opTHW},
-	{"thy", opTHY},
-	{"thi", opTHI},
-	{"tta", opTTA},
-	{"tat", opTAT},
-	{"tts", opTTS},
-	{"tst", opTST},
+	{"thr", opTHR, N_A},
+	{"thw", opTHW, N_A},
+	{"thy", opTHY, N_A},
+	{"thi", opTHI, N_A},
+	{"tta", opTTA, REG_A},
+	{"tat", opTAT, REG_A},
+	{"tts", opTTS, N_A},
+	{"tst", opTST, N_A},
 }
 
 // Parsed addressing arguments
@@ -717,17 +710,13 @@ func (p *parser) isMnemonic(mnemonic string) bool {
  */
 func (p *parser) parseMnemonic(mnemonic string) error {
 	// Parse any optional width suffix
-	sz := A16
-	if (p.peekChar() == '.') {
-		p.skip(1)
-		sz = p.parseOpWidth()
-		if (sz == A32) {
-			return errors.New("32-bit addresses are not supported")
-		} else if (sz == A48) {
-			return errors.New("48-bit registers is not supported")
-		} else if (sz == R32) {
-			return errors.New("32-bit registers is not supported")
-		}
+	sz := p.parseOpWidth()
+	if (sz == A32) {
+		return errors.New("32-bit addresses are not supported")
+	} else if (sz == A48) {
+		return errors.New("48-bit registers is not supported")
+	} else if (sz == R32) {
+		return errors.New("32-bit registers is not supported")
 	}
 
 	// Parse the/any args
@@ -754,10 +743,13 @@ func (p *parser) parseMnemonic(mnemonic string) error {
  *  (returning the string and index)
  */
 func (p *parser) parseOpWidth() int {
-	// Skip past whitespace
-	p.skipWhitespace()
+	// There is no '.' and thus no suffix
+	if (p.peekChar() != '.') {
+		return A16
+	}
 
 	// Opcode can have suffix of: .aw .a24 .a32 .a48 .b .8 .w .16 .t .24 .f .32
+	p.skip(1)
 	sym1 := p.peekChar()
 	sym2 := p.peekAhead(1)
 	sym3 := p.peekAhead(2)
@@ -805,7 +797,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		args.mode = modeRelative
 		if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
-			args.symbol = symbol
+			args.symbol = strings.ToLower(symbol)
 			args.hasValue = false
 		} else {
 			value, err := p.nextValue()
@@ -841,8 +833,15 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				args.symbol = symbol
-				args.hasValue = false
+				adress, size, err := p.lookupVariable(p.lastCode, symbol)
+				if (err == nil) {
+					args.value = adress
+					args.size |= size
+					args.hasValue = true
+				} else {
+					args.symbol = strings.ToLower(symbol)
+					args.hasValue = false
+				}
 			}
 		} else {
 			value, err := p.nextValue()
@@ -854,13 +853,8 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		}
 
 		if (args.hasValue) {
-			if args.value <= 0x0FF {
-				args.size = R08
-			} else if args.value <= 0x0FFFF {
-				args.size = R16
-			} else if args.value <= 0x0FFFFFF {
-				args.size = R24
-			} else {
+			args.size = valueToPrefix(args.value)
+			if (args.size == R32) {
 				return args, fmt.Errorf("the value '%x' is too large for 24-bits", args.value)
 			}
 		} else {
@@ -881,8 +875,15 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				args.symbol = symbol
-				args.hasValue = false
+				address, size, err := p.lookupVariable(p.lastCode, symbol)
+				if (err == nil) {
+					args.value = address
+					args.size |= size
+					args.hasValue = true
+				} else {
+					args.symbol = strings.ToLower(symbol)
+					args.hasValue = false
+				}
 			}
 		} else {
 			value, err := p.nextValue()
@@ -894,14 +895,11 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		}
 
 		if (args.hasValue) {
-			if args.value <= 0x0FF {
+			args.size = addressToPrefix(args.value)
+			if (args.value <= 0x0FF) {
 				args.mode = modeIndirectZeroPage // mmm ($aa)
-				args.size = A16
-			} else if args.value <= 0x0FFFF {
-				args.size = A16
-			} else if args.value <= 0x0FFFFFF {
-				args.size = A24
-			} else {
+			}
+			if (args.size == A32) {
 				return args, fmt.Errorf("the address '$%x' is too large for 24-bits", args.value)
 			}
 		} else {
@@ -950,28 +948,34 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
 			value, err := p.lookupConstant(symbol)
-if (symbol == "PWREDUP") { fmt.Printf("PWREDUP = %d %v\n", value, err) }
 			if (err == nil) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				args.symbol = symbol
-				args.hasValue = false
+				adress, size, err := p.lookupVariable(p.lastCode, symbol)
+				if (err == nil) {
+					args.value = adress
+					args.size |= size
+					args.hasValue = true
+				} else {
+					args.symbol = strings.ToLower(symbol)
+					args.hasValue = false
 
-				// optional +offset (or -offset) to the specified label
-				p.skipWhitespace()
-				sym := p.peekChar()
-				if (sym == '+') || (sym == '-') {
-					p.skip(1)
+					// optional +offset (or -offset) to the specified label
 					p.skipWhitespace()
-					value, err := p.nextValue()
-					if (err != nil) {
-						return args, err
-					}
-					if (sym == '-') {
-						args.value -= value
-					} else {
-						args.value += value
+					sym := p.peekChar()
+					if (sym == '+') || (sym == '-') {
+						p.skip(1)
+						p.skipWhitespace()
+						value, err := p.nextValue()
+						if (err != nil) {
+							return args, err
+						}
+						if (sym == '-') {
+							args.value -= value
+						} else {
+							args.value += value
+						}
 					}
 				}
 			}
@@ -985,11 +989,8 @@ if (symbol == "PWREDUP") { fmt.Printf("PWREDUP = %d %v\n", value, err) }
 		}
 
 		if (args.hasValue) {
-			if args.value <= 0x0FFFF {
-				args.size = A16
-			} else if args.value <= 0x0FFFFFF {
-				args.size = A24
-			} else {
+			args.size = addressToPrefix(args.value)
+			if (args.size == A32) {
 				return args, fmt.Errorf("the address '$%x' is too large for 24-bits", args.value)
 			}
 		} else {
@@ -1059,7 +1060,7 @@ func (p *parser) addInstruction(mnemonic int, addressMode int, size int, hasValu
 	instr.next = nil
 
 	instr.hasValue = hasValue
-	instr.symbol = symbol
+	instr.symbol = strings.ToLower(symbol)
 
 	instr.mnemonic = mnemonic
 	instr.addressMode = addressMode
@@ -1092,6 +1093,16 @@ func (p *parser) addInstruction(mnemonic int, addressMode int, size int, hasValu
 				p.lastCode.endAddr = instr.address + o.len
 			}
 
+			// Remember the size of the opcode for each of A, X, and Y registers
+			switch (m.reg) {
+			case REG_A:
+				p.lastAsz = size
+			case REG_X:
+				p.lastXsz = size
+			case REG_Y:
+				p.lastYsz = size
+			}
+
 			return nil
 		}
 	}
@@ -1099,6 +1110,54 @@ func (p *parser) addInstruction(mnemonic int, addressMode int, size int, hasValu
 	return fmt.Errorf("invalid address mode %s invalid for %s", addressModeStr(addressMode), strings.ToUpper(m.name))
 }
 
+
+/*
+ *  Return the mnemonic that matches the address mode and address/register size
+ */
+func lookupMnemonic(mmm string, addressMode int, size int) (int, *opcode, error) {
+	for j := range mnemonics {
+		if mnemonics[j].name == mmm {
+			m := mnemonics[j]
+			for k := range m.opcode {
+				o := m.opcode[k]
+				if (o.mode == addressMode) && (o.size == size) {
+//@@@fmt.Printf("%s %t %x %d %x\n", m.name, instr.hasValue, instr.value, o.mode, o.size)
+					return j, &o, nil
+				}
+			}
+		}
+	}
+	
+	return 0, nil, fmt.Errorf("mnemonic '%s' not found", mmm)
+}
+
+/*
+ *  Explain the address mode in a string
+ */
+func unionAddressMode(mode1 int, mode2 int) int {
+	switch (mode1 & R32) {
+	case R08:
+		switch (mode2 & R32) {
+		case R08: return R08
+		case R16: return R16
+		case R24: return R24
+		case R32: return R24 // as R32 isn't implemented
+		}
+	case R16:
+		switch (mode2 & R32) {
+		case R08: return R16
+		case R16: return R16
+		case R24: return R24
+		case R32: return R24 // as R32 isn't implemented
+		}
+	case R24:
+		return R24
+	case R32:
+		return R24 // as R32 isn't implemented
+	}
+
+	return R24
+}
 
 /*
  *  Explain the address mode in a string

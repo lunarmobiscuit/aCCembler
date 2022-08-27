@@ -56,6 +56,14 @@ func (p *parser) parseFile(filename string, buffer []uint8) error {
 				fmt.Printf("ERROR in %s [line %d] -- %s\n", filename, p.n, err)
 				return err
 			}
+		case "global":
+			var label string
+			label = p.nextAZ_az_09()
+			err := p.parseVariable(nil, label)
+			if (err != nil) {
+				fmt.Printf("ERROR in %s [line %d] -- %s\n", filename, p.n, err)
+				return err
+			}
 		case "sub":
 			var label string
 			label = p.nextAZ_az_09()
@@ -99,13 +107,13 @@ func (p *parser) parseConstant(label string) error {
 	}
 
 	// all constants are stored as lowercase
-	label = strings.ToLower(label)
+	labelLC := strings.ToLower(label)
 
 	// Skip past whitespace
 	p.skipWhitespace()
 
 	// Check for duplicate
-	_, err := p.lookupConstant(label)
+	_, err := p.lookupConstant(labelLC)
 	if (err == nil) {
 		return fmt.Errorf("const '%s' is already defined", label)
 	}
@@ -114,8 +122,8 @@ func (p *parser) parseConstant(label string) error {
 	if (p.peekChar() != '=') {
 		return errors.New("const is missing a '='")
 	}
-
 	p.skip(1)
+
 	var value int
 	if p.isNextAZ() {
 		ref := p.nextAZ_az_09()
@@ -144,7 +152,102 @@ func (p *parser) parseConstant(label string) error {
 	p.lastCnst = cnst
 	cnst.next = nil
 	cnst.name = label
+	cnst.nameLC = labelLC
 	cnst.value = value
+
+	return nil
+}
+
+/*
+ *  Parse a defined variable
+ */
+func (p *parser) parseVariable(b *codeBlock, name string) error {
+	var keyword string
+	if (b == nil) {
+		keyword = "global"
+	} else {
+		keyword = "var"
+	}
+
+	if (name == "") {
+		return fmt.Errorf("%s is missing a name", keyword)
+	}
+
+	// all variable names are stored as lowercase
+	nameLC := strings.ToLower(name)
+
+	// Skip past whitespace
+	p.skipWhitespace()
+
+	// Check for duplicate
+	_, err := p.lookupConstant(nameLC)
+	if (err == nil) {
+		return fmt.Errorf("%s '%s' is already defined as the name of a constant", keyword, name)
+	}
+	_, _, err = p.lookupVariable(b, nameLC)
+	if (err == nil) {
+		return fmt.Errorf("%s '%s' is already defined as another variable", keyword, name)
+	}
+
+	// = value
+	if (p.peekChar() != '=') {
+		return fmt.Errorf("%s '%s' is missing a '='", keyword, name)
+	}
+	p.skip(1)
+
+	p.skipWhitespace()
+	if (p.peekChar() != '@') {
+		return fmt.Errorf("%s '%s' is missing a '@'", keyword, name)
+	}
+	p.skip(1)
+
+	// M@$aaaa
+	var address int
+	if (p.peekChar() == '$') { // M@$aaaa
+		address, err = p.nextValue()
+		if (err != nil) {
+			return fmt.Errorf("%s '%s' specifies an invalid address", keyword, name)
+		}
+	} else {
+		// M@label  ; label = contstant or variable
+		token := p.nextAZ_az_09()
+		address, err = p.lookupConstant(token)
+		if (err != nil) {
+			address, _, err = p.lookupVariable(b, token)
+			if (err != nil) {
+				return fmt.Errorf("%s '%s' specifies an unknown variable or constant '%s'", keyword, name, token)
+			}
+		}
+	}
+	
+	// Optional size
+	size := p.parseOpWidth()
+
+	// Skip until the next parsable character
+	p.skipWhitespaceAndEOL()
+
+	// Store this variable (either as a global or local to a block)
+	vrbl := new(vrbl)
+	if (b == nil) {
+		if p.global == nil {
+			p.global = vrbl
+		} else if p.lastGlobal != nil {
+			p.lastGlobal.next = vrbl
+		}
+		p.lastGlobal = vrbl
+	} else {
+		if b.vrbl == nil {
+			b.vrbl = vrbl
+		} else if b.lastVrbl != nil {
+			b.lastVrbl.next = vrbl
+		}
+		b.lastVrbl = vrbl
+	}
+	vrbl.next = nil
+	vrbl.name = name
+	vrbl.nameLC = nameLC
+	vrbl.address = address
+	vrbl.size = size
 
 	return nil
 }
@@ -160,9 +263,6 @@ func (p *parser) parseSubroutineBlock(label string) error {
 	// Skip past whitespace
 	p.skipWhitespace()
 
-	// all labels are stored as lowercase
-	label = strings.ToLower(label)
-
 	// Optional @ADDR
 	address := 0
 	if (p.peekChar() == '@') {
@@ -175,6 +275,13 @@ func (p *parser) parseSubroutineBlock(label string) error {
 		p.skipWhitespace()
 	} else {
 		address = p.endestAddr()
+	}
+
+	// Set the default width based on the address of this block (@@@ not 100% correct but a good first guess)
+	if (address <= 0xFFFF) {
+		p.abWidth = A16
+	} else {
+		p.abWidth = A24
 	}
 
 	// Must have a { before the end of the line
@@ -199,6 +306,7 @@ func (p *parser) parseSubroutineBlock(label string) error {
 	block.startAddr = address
 	block.endAddr = address
 	block.name = label
+	block.nameLC = strings.ToLower(label)
 	block.instr = nil
 
 	// Parse the code
@@ -210,21 +318,24 @@ func (p *parser) parseSubroutineBlock(label string) error {
  *  Parse the block of code
  */
 func (p *parser) parseCode(label string) error {
-	// all labels are stored as lowercase
-	label = strings.ToLower(label)
-
 	// Should be a sequence of mnemonics, keywords, and label, followed by a '}'
 	var token string
 	for p.i < p.end {
 		token = strings.ToLower(p.nextAZ_az_09())
 
-		// Not a AZ09 symbol, so is it a blank line or comment or syntax error?
+		// Not a AZ09 symbol, so is it a blank line or comment or variable or syntax error?
 		if (token == "") {
 			if (p.skipComment()) {
 				continue
 			} else if p.peekChar() == '}' {	// end of the block
 				p.nextLine()
 				return nil
+			} else if p.peekChar() == '@' {	// must be start of a variable in an expression
+				err := p.parseExpression(token)
+				if (err != nil) {
+					return err
+				}
+				continue
 			} else {
 				return fmt.Errorf("found '%c' instead of valid mnemonic or keyword in {...}", p.peekChar())
 				break
@@ -232,7 +343,12 @@ func (p *parser) parseCode(label string) error {
 		}
 
 		// Parse the keyword
-		if (token == "a") || (token == "x") || (token == "y") || (token == "s") {
+		if (token == "a") || (token == "x") || (token == "y") || (token == "m") {
+			err := p.parseExpression(token)
+			if (err != nil) {
+				return err
+			}
+		} else if p.isRegisterMnemonic(token) {
 			err := p.parseRegister(token)
 			if (err != nil) {
 				return err
@@ -333,6 +449,7 @@ func (p *parser) parseDataBlock(label string) error {
 	block.startAddr = address
 	block.endAddr = address
 	block.name = label
+	block.nameLC = strings.ToLower(label)
 	block.data = nil
 fmt.Printf("DATA @$%06x\n", address)
 

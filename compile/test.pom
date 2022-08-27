@@ -8,11 +8,92 @@ const Six5536 = $10000
 const million = 1000000
 const another_one = one
 
+global zp = @$00
+global two = @$02.w
+global three = @$03.t
+global high = @$12345
+global mmm = @million.t
+global zp0 = @zp.w
+
 /*
  * Code block
  */
 sub Start @$FF0000 { // C-style comment
+	var zp1 = @$01
+	var addr16 = @$02.w
+	var addr24 = @$10E.w
+
 	cld
+
+	/////// DEBUG
+	var inthemiddle = @$12345
+
+ simple_equals:
+	A = 1
+	X = 2000
+	Y = million
+	A.w = X
+
+ memory_equals:
+	M@$123 = M@$124
+	M@$123.w = M@$124.b
+	M@$123.b = M@$124.t
+	M@$123 = $12
+	M@$123 = $1234
+	M@$123 = $123456
+	M@$123 = A
+	M@$123 = A.w
+	M@$123 = X
+	M@$123 = X.t
+	M@$123 = Y
+	M@$123.t = Y
+
+ a_equals:
+	A = M@$124
+	A.w = M@$124.b
+	A.b = M@$124.t
+	A = $12
+	A = $1234
+	A = $123456
+	A = X
+	A = X.t
+	A = Y
+	A.t = Y
+	A.b = $1234
+	A.w = $12345
+	A.t = 8000000 + A
+  
+ M_op_equals:
+	M@$12.b += $1234
+	M@$123.w += M@$124.b
+	M@$123.b += M@$124.t
+	M@$123456.t += 8000000
+
+ A_op_equals:
+	A.w += M@$80
+	A.w += 3
+	A += X.t
+	A.w += Y
+	A.t -= million
+	a.t &= 0xFF
+	a.t |= 0x7777
+	a ^= $AAAAAA
+
+ more_tests:
+	@two = 321
+	A.w = X + Y
+	A = X.w + Y
+	A = X + Y.w
+	A.t = X.w + Y.w
+	A = @zp1 + 1
+	A = @zp0 + @zp1
+	@high = $54321
+
+	/*if (a == 1) {
+		nop
+	}*/
+	/////// END
+
 	lda #$0
 	lda $1
 	lda ($2)
@@ -29,6 +110,8 @@ sub Start @$FF0000 { // C-style comment
  * More code
  */
 sub Title {
+	var zp1 = @$101
+
  foo:
 	nop
 	and one
