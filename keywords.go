@@ -2,6 +2,7 @@ package pomme
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Linked list of symbols
@@ -86,7 +87,50 @@ func parseIf(p *parser, token string) error {
  *  Parse the 'for' keyword
  */
 func parseFor(p *parser, token string) error {
-	fmt.Printf("FOR is not yet supported [%d-%d]\n", p.i, p.n)
+	ifloop := new(ifloop)
+	ifloop.startAddr = p.lastCode.endAddr
+	ifloop.endAddr = ifloop.startAddr
+
+	v := p.nextAZ_az_09()
+	if (v == "") {
+		return fmt.Errorf("missing loop variable in FOR")
+	}
+
+	p.skipWhitespace()
+	if (p.nextChar() != '=') {
+		return fmt.Errorf("missing = in FOR")
+	}
+
+	start, err := p.nextValue()
+	if (err != nil) {
+		return fmt.Errorf("invalid starting value in FOR")
+	}
+
+	to := strings.ToUpper(p.nextAZ_az_09())
+	if (to == "DOWN") {
+		ifloop.upDown = false
+		to = strings.ToUpper(p.nextAZ_az_09())
+	} else {
+		ifloop.upDown = true
+	}
+
+	if (to != "TO") {
+		return fmt.Errorf("syntax error in FOR, missing TO")
+	}
+
+	end, err2 := p.nextValue()
+	if (err2 != nil) {
+		return fmt.Errorf("invalid ending value in FOR")
+	}
+
+	p.skipWhitespace()
+	if (p.nextChar() != '{') {
+		return fmt.Errorf("missing { in FOR")
+	}
+
+
+fmt.Printf("FOR %s = %d TO %d\n", v, start, end)
+
 	return nil
 }
 

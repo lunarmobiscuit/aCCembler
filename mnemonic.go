@@ -826,16 +826,26 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 	} else if (sym == '#') { // mmm #$aa or mmm #$aaaa
 		p.skip(1)
 		args.mode = modeImmediate
-		if p.isNextAZ() {
+		if p.peekChar() == '\'' {
+			p.skip(1)
+			c := p.nextChar()
+			if p.peekChar() != '\'' {
+				return args, fmt.Errorf("no matching single quote after %c", c)
+			}
+			p.skip(1)
+			args.value = int(c)
+			args.size = R08
+			args.hasValue = true
+		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				adress, size, err := p.lookupVariable(p.lastCode, symbol)
+				address, size, err := p.lookupVariable(p.lastCode, symbol)
 				if (err == nil) {
-					args.value = adress
+					args.value = address
 					args.size |= size
 					args.hasValue = true
 				} else {
@@ -868,22 +878,25 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 	} else if (sym == '(') { // mmm ($aa) or mmm ($aaaa)
 		p.skip(1)
 		args.mode = modeIndirect // mmm ($aaaa)
-		if p.isNextAZ() {
+		if (p.peekChar() == '@') {
+			p.skip(1)
+			symbol := p.nextAZ_az_09()
+			address, size, err := p.lookupVariable(p.lastCode, symbol)
+			if (err != nil) {
+				return args, fmt.Errorf("unknown variable '%s'", symbol)
+			}
+			args.value = address
+			args.size |= size
+			args.hasValue = true
+		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				address, size, err := p.lookupVariable(p.lastCode, symbol)
-				if (err == nil) {
-					args.value = address
-					args.size |= size
-					args.hasValue = true
-				} else {
-					args.symbol = strings.ToLower(symbol)
-					args.hasValue = false
-				}
+				args.symbol = strings.ToLower(symbol)
+				args.hasValue = false
 			}
 		} else {
 			value, err := p.nextValue()
@@ -945,37 +958,40 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			}
 		}
 	} else { // mmm $vvvv
-		if p.isNextAZ() {
+		if (p.peekChar() == '@') {
+			p.skip(1)
+			symbol := p.nextAZ_az_09()
+			address, size, err := p.lookupVariable(p.lastCode, symbol)
+			if (err != nil) {
+				return args, fmt.Errorf("unknown variable '%s'", symbol)
+			}
+			args.value = address
+			args.size |= size
+			args.hasValue = true
+		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				adress, size, err := p.lookupVariable(p.lastCode, symbol)
-				if (err == nil) {
-					args.value = adress
-					args.size |= size
-					args.hasValue = true
-				} else {
-					args.symbol = strings.ToLower(symbol)
-					args.hasValue = false
+				args.symbol = strings.ToLower(symbol)
+				args.hasValue = false
 
-					// optional +offset (or -offset) to the specified label
+				// optional +offset (or -offset) to the specified label
+				p.skipWhitespace()
+				sym := p.peekChar()
+				if (sym == '+') || (sym == '-') {
+					p.skip(1)
 					p.skipWhitespace()
-					sym := p.peekChar()
-					if (sym == '+') || (sym == '-') {
-						p.skip(1)
-						p.skipWhitespace()
-						value, err := p.nextValue()
-						if (err != nil) {
-							return args, err
-						}
-						if (sym == '-') {
-							args.value -= value
-						} else {
-							args.value += value
-						}
+					value, err := p.nextValue()
+					if (err != nil) {
+						return args, err
+					}
+					if (sym == '-') {
+						args.value -= value
+					} else {
+						args.value += value
 					}
 				}
 			}

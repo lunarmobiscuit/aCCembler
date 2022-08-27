@@ -210,12 +210,12 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 		case R24: size = fmt.Sprintf("-%06x",  v.address+2)
 		}
 		variable := fmt.Sprintf("%06x%s   ; GLOBAL @%s\n", v.address, size, v.name)
-		out.WriteString(variable)
+		listing.WriteString(variable)
 		fmt.Printf(variable)
 
 	}
 	if (p.global != nil) {
-		out.WriteString("\n")
+		listing.WriteString("\n")
 		fmt.Printf("\n")
 	}
 
@@ -253,7 +253,7 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 				case R24: size = fmt.Sprintf("-%06x",  v.address+2)
 				}
 				variable := fmt.Sprintf("%06x%s   ; VAR @%s\n", v.address, size, v.name)
-				out.WriteString(variable)
+				listing.WriteString(variable)
 				fmt.Printf(variable)
 			}
 
@@ -320,9 +320,15 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 						}
 						line += fmt.Sprintf("%s ", sizeToSuffix(e.src2.size))
 					}
+
+					line += "\n"
+					listing.WriteString(line)
+					fmt.Printf(line)
+					continue
 				} else if (i.mnemonic == 0) {
 				// Label
 					line += fmt.Sprintf("                 %s:\n", i.symbol)
+
 					listing.WriteString(line)
 					fmt.Printf(line)
 					continue

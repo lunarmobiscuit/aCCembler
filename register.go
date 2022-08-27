@@ -179,13 +179,21 @@ func (p *parser) parseRegister(mnemonic string) error {
 
 			switch (psedomnemonics[n].mnemonic) {
 			case "pha":
+				return fmt.Errorf("instruction not yet implemented")
 			case "pla":
+				return fmt.Errorf("instruction not yet implemented")
 			case "ora":
+				return fmt.Errorf("instruction not yet implemented")
 			case "and":
+				return fmt.Errorf("instruction not yet implemented")
 			case "eor":
+				return fmt.Errorf("instruction not yet implemented")
 			case "adc":
+				return fmt.Errorf("instruction not yet implemented")
 			case "sbc":
+				return fmt.Errorf("instruction not yet implemented")
 			case "bit":
+				return fmt.Errorf("instruction not yet implemented")
 			case "cmp":
 				switch (sz) {
 				case R08:
@@ -223,11 +231,17 @@ fmt.Printf("CCC%s%d %s %x %s\n", mnemonic[3:4], reg, sz, args.symbol)
 					p.addRegisterInstruction("sbc", modeZeroPage, R08, reg2+2)
 				}
 			case "rol":
+				return fmt.Errorf("instruction not yet implemented")
 			case "ror":
+				return fmt.Errorf("instruction not yet implemented")
 			case "asl":
+				return fmt.Errorf("instruction not yet implemented")
 			case "lsr":
+				return fmt.Errorf("instruction not yet implemented")
 			case "inc":
+				return fmt.Errorf("instruction not yet implemented")
 			case "dec":
+				return fmt.Errorf("instruction not yet implemented")
 			case "lda":
 fmt.Printf("LD_R%d %s %x %x\n", reg, mnemonic[3:4], sz, args.value)
 				switch (args.mode) {

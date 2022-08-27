@@ -86,6 +86,23 @@ type instruction struct {
 	comment		*comment
 	// optional expression
 	expr		*expression
+	// optional block from keyword
+	ifloop		*ifloop
+}
+
+const (
+	IS_IF = iota
+	IS_LOOP
+	IS_FOR
+	IS_DO
+)
+
+// Sub-block created by a keyword
+type ifloop struct {
+	keyword		int
+	upDown		bool
+	startAddr	int
+	endAddr		int
 }
 
 // Unit within an instruction

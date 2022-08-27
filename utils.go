@@ -311,6 +311,19 @@ func (p *parser) peekAhead(k int) uint8 {
 }
 
 /*
+ *  Return the next character
+ *  (returning the char AND updating the index)
+ */
+func (p *parser) nextChar() uint8 {
+	if p.i > p.end {
+		return 0
+	}
+	c := p.b[p.i]
+	p.i += 1
+	return c
+}
+
+/*
  *  Determine the correct prefix for the size of the address or value
  */
 func addressToPrefix(v int) int {
