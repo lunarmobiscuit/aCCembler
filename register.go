@@ -203,7 +203,6 @@ func (p *parser) parseRegister(mnemonic string) error {
 				}
 			case "zzz":
 			case "ccc":
-fmt.Printf("CCC%s%d %s %x %s\n", mnemonic[3:4], reg, sz, args.symbol)
 				reg64, err = strconv.ParseInt(args.symbol[1:], 10, 16)
 				if (err != nil) {
 					return fmt.Errorf("invalid register number (%s)", err)
@@ -243,7 +242,6 @@ fmt.Printf("CCC%s%d %s %x %s\n", mnemonic[3:4], reg, sz, args.symbol)
 			case "dec":
 				return fmt.Errorf("instruction not yet implemented")
 			case "lda":
-fmt.Printf("LD_R%d %s %x %x\n", reg, mnemonic[3:4], sz, args.value)
 				switch (args.mode) {
 				case modeImplicit:
 					switch (sz) {
@@ -322,25 +320,20 @@ fmt.Printf("LD_R%d %s %x %x\n", reg, mnemonic[3:4], sz, args.value)
  */
 func (p *parser) addInstructionComment(c string) {
 	instr := new(instruction)
-	if (p.lastCode.instr == nil) {
-		p.lastCode.instr = instr
+	if (p.currentCode.instr == nil) {
+		p.currentCode.instr = instr
 		instr.prev = nil
-	} else if p.lastCode.lastInstr != nil {
-		instr.prev = p.lastCode.lastInstr
-		p.lastCode.lastInstr.next = instr
+	} else if p.currentCode.lastInstr != nil {
+		instr.prev = p.currentCode.lastInstr
+		p.currentCode.lastInstr.next = instr
 	}
-	p.lastCode.lastInstr = instr
+	p.currentCode.lastInstr = instr
 	instr.next = nil
 	instr.len = 0
 	instr.hasValue = true
 	instr.comment = new(comment)
 	instr.comment.comment = c
-	if (instr.prev == nil) {
-		instr.address = p.lastCode.startAddr
-	} else {
-		instr.address = instr.prev.address + instr.prev.len
-		p.lastCode.endAddr = instr.address + instr.len
-	}
+	instr.address = p.currentCode.endAddr
 }
 
 /*
@@ -348,14 +341,14 @@ func (p *parser) addInstructionComment(c string) {
  */
 func (p *parser) addRegisterInstruction(mmm string, addressMode int, size int, value int) {
 	instr := new(instruction)
-	if (p.lastCode.instr == nil) {
-		p.lastCode.instr = instr
+	if (p.currentCode.instr == nil) {
+		p.currentCode.instr = instr
 		instr.prev = nil
-	} else if p.lastCode.lastInstr != nil {
-		instr.prev = p.lastCode.lastInstr
-		p.lastCode.lastInstr.next = instr
+	} else if p.currentCode.lastInstr != nil {
+		instr.prev = p.currentCode.lastInstr
+		p.currentCode.lastInstr.next = instr
 	}
-	p.lastCode.lastInstr = instr
+	p.currentCode.lastInstr = instr
 	instr.next = nil
 
 	var o *opcode
@@ -377,12 +370,8 @@ func (p *parser) addRegisterInstruction(mmm string, addressMode int, size int, v
 		p.lastYsz = size
 	}
 
-	if (instr.prev == nil) {
-		instr.address = p.lastCode.startAddr
-	} else {
-		instr.address = instr.prev.address + instr.prev.len
-		p.lastCode.endAddr = instr.address + instr.len
-	}
+	instr.address = p.currentCode.endAddr
+	p.currentCode.endAddr += instr.len
 }
 
 

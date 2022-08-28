@@ -157,6 +157,57 @@ func (p *parser) isNextAZ() bool {
 }
 
 /*
+ *  Does the next token start with 0-9 or $
+ *  (returning boolean)
+ */
+func (p *parser) isNext09() bool {
+	// skip past whitespace
+	j := p.i
+	for p.b[j] <= ' ' {
+		j += 1
+	}
+
+	// is the next character AZaz?
+	if (p.b[j] >= '0') && (p.b[j] <= '9') || (p.b[j] == '$') {
+		return true
+	} else {
+		return false
+	}
+}
+
+/*
+ *  Return the next A-Za-z0-9_ token
+ *  (WITHOUT updating the index)
+ */
+func (p *parser) peekAZ_az_09() string {
+	// skip past whitespace
+	p.skipWhitespace()
+
+	// must start with AZ character
+	j := p.i
+	k := p.i
+	if ((p.b[k] >= 'A') && (p.b[k] <= 'Z')) ||
+			(p.b[k] >= 'a') && (p.b[k] <= 'z') || (p.b[k] == '_') {
+		k += 1
+	} else {
+		return ""
+	}
+
+	// find the next non AZ09 character
+	for k < p.end {
+		if ((p.b[k] >= 'A') && (p.b[k] <= 'Z')) ||
+				((p.b[k] >= 'a') && (p.b[k] <= 'z')) ||
+					((p.b[k] >= '0') && (p.b[k] <= '9')) || (p.b[k] == '_') {
+			k += 1
+		} else {
+			break
+		}
+	}
+
+	return string(p.b[j:k])
+}
+
+/*
  *  Return the next A-Za-z0-9_ token
  *  (returning the string and index)
  */

@@ -380,6 +380,35 @@ func (p *parser) generateExpressionOpEquals(expr *expression) error {
 		return nil
 	case MINUS:
 	case AND:
+		switch (expr.dest.location) {
+		case MEMORY, VARIABLE:
+			// TBD
+			p.addExprInstruction("nop", modeImplicit, R08, 0) // nop
+		case REG_A:
+			switch (expr.src1.location) {
+			case MEMORY, VARIABLE:
+				if (expr.src1.addrval <= 0x0FF) {
+					p.addExprInstruction("and", modeZeroPage, expr.src1.size, expr.src1.addrval)
+				} else {
+					p.addExprInstruction("and", modeAbsolute, expr.src1.size, expr.src1.addrval)
+				}
+			case VALUE:
+				p.addExprInstruction("and", modeImmediate, expr.src1.size, expr.src1.addrval)
+			case REG_A:
+				return fmt.Errorf("A &= A isn't allowed")
+			case REG_X:
+				return fmt.Errorf("A &= X isn't allowed")
+			case REG_Y:
+				return fmt.Errorf("A &= Y isn't allowed")
+			}
+		case REG_X:
+			// TBD
+			p.addExprInstruction("nop", modeImplicit, R08, 0) // nop
+		case REG_Y:
+			// TBD
+			p.addExprInstruction("nop", modeImplicit, R08, 0) // nop
+		}
+		return nil
 	case OR:
 	case EOR:
 	case SHIFT_LEFT:
@@ -430,17 +459,17 @@ func (p *parser) generateExpressionOpEquals(expr *expression) error {
 			switch (expr.dest.location) {
 			case MEMORY, VARIABLE:
 				for i := 0; i < expr.src1.addrval; i++ {
-					p.addExprInstruction("asr", modeAbsolute, expr.src1.size, expr.src1.addrval) // asl M[aaa]
+					p.addExprInstruction("lsr", modeAbsolute, expr.src1.size, expr.src1.addrval) // asl M[aaa]
 				}
 			case REG_A:
 				for i := 0; i < expr.src1.addrval; i++ {
-					p.addExprInstruction("asr", modeImplicit, expr.dest.size, 0)
+					p.addExprInstruction("lsr", modeImplicit, expr.dest.size, 0)
 				}
 			case REG_X:
 				p.addExprInstruction("sta", modeZeroPage, saveRestoreSize, 0) // lda R0
 				p.addExprInstruction("txa", modeImplicit, expr.dest.size, 0)
 				for i := 0; i < expr.src1.addrval; i++ {
-					p.addExprInstruction("asr", modeImplicit, expr.dest.size, 0)
+					p.addExprInstruction("lsr", modeImplicit, expr.dest.size, 0)
 				}
 				p.addExprInstruction("tax", modeImplicit, expr.dest.size, 0)
 				p.addExprInstruction("lda", modeZeroPage, saveRestoreSize, 0) // lda R0
@@ -448,7 +477,7 @@ func (p *parser) generateExpressionOpEquals(expr *expression) error {
 				p.addExprInstruction("sta", modeZeroPage, saveRestoreSize, 0) // lda R0
 				p.addExprInstruction("tya", modeImplicit, expr.dest.size, 0)
 				for i := 0; i < expr.src1.addrval; i++ {
-					p.addExprInstruction("asr", modeImplicit, expr.dest.size, 0)
+					p.addExprInstruction("lsr", modeImplicit, expr.dest.size, 0)
 				}
 				p.addExprInstruction("tay", modeImplicit, expr.dest.size, 0)
 				p.addExprInstruction("lda", modeZeroPage, saveRestoreSize, 0) // lda R0
@@ -506,7 +535,7 @@ func (p *parser) parseExpressionArg(token string) (int, int, int, error) {
 		if p.peekChar() == '@' {
 			p.skip(1)
 			token = p.nextAZ_az_09()
-			address, size, err := p.lookupVariable(p.lastCode, token)
+			address, size, err := p.lookupVariable(p.currentCode, token)
 			if (err != nil) {
 				return 0, 0, 0, fmt.Errorf("unknown variable '@%s'", token)
 			}
@@ -558,39 +587,37 @@ func (p *parser) parseMemoryAddress() (int, error) {
  */
 func (p *parser) addExpression(expr *expression) {
 	instr := new(instruction)
-	if (p.lastCode.instr == nil) {
-		p.lastCode.instr = instr
+	if (p.currentCode.instr == nil) {
+		p.currentCode.instr = instr
 		instr.prev = nil
-	} else if p.lastCode.lastInstr != nil {
-		instr.prev = p.lastCode.lastInstr
-		p.lastCode.lastInstr.next = instr
+	} else if p.currentCode.lastInstr != nil {
+		instr.prev = p.currentCode.lastInstr
+		p.currentCode.lastInstr.next = instr
 	}
-	p.lastCode.lastInstr = instr
+	p.currentCode.lastInstr = instr
 	instr.next = nil
 	instr.len = 0
 	instr.hasValue = true
 	instr.expr = expr
-	if (instr.prev == nil) {
-		instr.address = p.lastCode.startAddr
-	} else {
-		instr.address = instr.prev.address + instr.prev.len
-		p.lastCode.endAddr = instr.address + instr.len
-	}
+	instr.address = p.currentCode.endAddr
 }
 
 /*
  *  Add an instruction to implement the expression
  */
-func (p *parser) addExprInstruction(mmm string, addressMode int, size int, value int) {
+func (p *parser) addExprInstruction(mmm string, addressMode int, size int, value int) *instruction {
+	return p.addExprInstructionWithSymbol(mmm, addressMode, size, value, "", true)
+}
+func (p *parser) addExprInstructionWithSymbol(mmm string, addressMode int, size int, value int, symbol string, hasValue bool) *instruction {
 	instr := new(instruction)
-	if (p.lastCode.instr == nil) {
-		p.lastCode.instr = instr
+	if (p.currentCode.instr == nil) {
+		p.currentCode.instr = instr
 		instr.prev = nil
-	} else if p.lastCode.lastInstr != nil {
-		instr.prev = p.lastCode.lastInstr
-		p.lastCode.lastInstr.next = instr
+	} else if p.currentCode.lastInstr != nil {
+		instr.prev = p.currentCode.lastInstr
+		p.currentCode.lastInstr.next = instr
 	}
-	p.lastCode.lastInstr = instr
+	p.currentCode.lastInstr = instr
 	instr.next = nil
 
 	var o *opcode
@@ -599,8 +626,10 @@ func (p *parser) addExprInstruction(mmm string, addressMode int, size int, value
 	instr.opcode = o.opcode
 	instr.addressMode = o.mode
 	instr.len = o.len
-	instr.hasValue = true
 	instr.value = value
+	instr.symbol = symbol
+	instr.symbolLC = strings.ToLower(symbol)
+	instr.hasValue = hasValue
 
 	// Remember the size of the opcode for each of A, X, and Y registers
 	switch (mnemonics[instr.mnemonic].reg) {
@@ -612,12 +641,10 @@ func (p *parser) addExprInstruction(mmm string, addressMode int, size int, value
 		p.lastYsz = size
 	}
 
-	if (instr.prev == nil) {
-		instr.address = p.lastCode.startAddr
-	} else {
-		instr.address = instr.prev.address + instr.prev.len
-		p.lastCode.endAddr = instr.address + instr.len
-	}
+	instr.address = p.currentCode.endAddr
+	p.currentCode.endAddr += instr.len
+
+	return instr
 }
 
 

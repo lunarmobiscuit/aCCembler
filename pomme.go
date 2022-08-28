@@ -26,6 +26,7 @@ type parser struct {
 
 	code		*codeBlock		// linked list of subroutine blocks
 	lastCode	*codeBlock
+	currentCode	*codeBlock		// current block being parsed/generated
 
 	lastAsz		int				// the size the last time A was touched
 	lastXsz		int				//                      ^ X
@@ -54,12 +55,14 @@ type vrbl struct {
 
 // Linked list of code blocks
 type codeBlock struct {
+	up			*codeBlock		// up to the parent block (if any)
 	next		*codeBlock		// next in the linked list
 	prev		*codeBlock		// previous in the linked list
 	startAddr	int
 	endAddr		int
 	name		string
 	nameLC		string
+	isLoop		bool
 
 	vrbl		*vrbl			// linked list of local-to-the-block variables
 	lastVrbl	*vrbl
@@ -74,6 +77,7 @@ type instruction struct {
 	prev		*instruction	// previous in the linked list
 	hasValue	bool
 	symbol		string
+	symbolLC	string
 	// code
 	mnemonic	int
 	addressMode	int
@@ -87,22 +91,25 @@ type instruction struct {
 	// optional expression
 	expr		*expression
 	// optional block from keyword
-	ifloop		*ifloop
+	subBlock	*subBlock
 }
 
 const (
-	IS_IF = iota
-	IS_LOOP
-	IS_FOR
-	IS_DO
+	KW_IF = iota
+	KW_ELSE
+	KW_LOOP
+	KW_FOR
+	KW__DO
 )
 
 // Sub-block created by a keyword
-type ifloop struct {
+type subBlock struct {
 	keyword		int
 	upDown		bool
 	startAddr	int
 	endAddr		int
+
+	block		*codeBlock
 }
 
 // Unit within an instruction

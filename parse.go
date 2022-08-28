@@ -302,6 +302,7 @@ func (p *parser) parseSubroutineBlock(label string) error {
 		p.lastCode.next = block
 	}
 	p.lastCode = block
+	p.currentCode = block
 	block.next = nil
 	block.startAddr = address
 	block.endAddr = address
@@ -451,7 +452,6 @@ func (p *parser) parseDataBlock(label string) error {
 	block.name = label
 	block.nameLC = strings.ToLower(label)
 	block.data = nil
-fmt.Printf("DATA @$%06x\n", address)
 
 	// Parse the data
 	err := p.parseData(size, label, block)

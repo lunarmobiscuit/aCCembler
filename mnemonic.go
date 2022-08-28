@@ -492,10 +492,10 @@ var opBVC = []opcode {
 	{modeRelative, A16, 0x50, 2}, {modeRelative, A24, 0x50, 4},
 }
 var opBVS = []opcode {
-	{modeRelative, A16, 0x70, 2}, {modeRelative, A24, 0x90, 4},
+	{modeRelative, A16, 0x70, 2}, {modeRelative, A24, 0x70, 4},
 }
 var opBRA = []opcode {
-	{modeRelative, A16, 0x80, 2}, {modeRelative, A24, 0x90, 4},
+	{modeRelative, A16, 0x80, 2}, {modeRelative, A24, 0x80, 4},
 }
 var opSTZ = []opcode {
 	{modeZeroPage, R08, 0x64, 2}, {modeZeroPage, R16, 0x64, 3}, {modeZeroPage, R24, 0x64, 3},
@@ -796,8 +796,14 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		p.skip(1)
 		args.mode = modeRelative
 		if p.isNextAZ() {
-			symbol := p.nextAZ_az_09()
-			args.symbol = strings.ToLower(symbol)
+			symbol := strings.ToLower(p.nextAZ_az_09())
+
+			// keyword "break" meaning 'goto end of the current block'
+			if (symbol == "break") {
+				symbol = strings.ToLower(p.currentCode.name + "_end")
+			}
+
+			args.symbol = symbol
 			args.hasValue = false
 		} else {
 			value, err := p.nextValue()
@@ -843,7 +849,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				address, size, err := p.lookupVariable(p.lastCode, symbol)
+				address, size, err := p.lookupVariable(p.currentCode, symbol)
 				if (err == nil) {
 					args.value = address
 					args.size |= size
@@ -881,7 +887,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		if (p.peekChar() == '@') {
 			p.skip(1)
 			symbol := p.nextAZ_az_09()
-			address, size, err := p.lookupVariable(p.lastCode, symbol)
+			address, size, err := p.lookupVariable(p.currentCode, symbol)
 			if (err != nil) {
 				return args, fmt.Errorf("unknown variable '%s'", symbol)
 			}
@@ -961,7 +967,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		if (p.peekChar() == '@') {
 			p.skip(1)
 			symbol := p.nextAZ_az_09()
-			address, size, err := p.lookupVariable(p.lastCode, symbol)
+			address, size, err := p.lookupVariable(p.currentCode, symbol)
 			if (err != nil) {
 				return args, fmt.Errorf("unknown variable '%s'", symbol)
 			}
@@ -977,6 +983,11 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			} else {
 				args.symbol = strings.ToLower(symbol)
 				args.hasValue = false
+
+				// keyword "break" meaning 'goto end of the current block'
+				if (args.symbol == "break") {
+					args.symbol = strings.ToLower(p.currentCode.name + "_end")
+				}
 
 				// optional +offset (or -offset) to the specified label
 				p.skipWhitespace()
@@ -1054,7 +1065,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 func (p *parser) parseLabel(label string) error {
 	// Skip past the ':'
 	p.skip(1)
-	p.addInstruction(0, unknownMode, A16, false, label, 0)
+	p.addInstructionLabel(label)
 	p.skipWhitespaceAndEOL()
 
 	return nil
@@ -1065,18 +1076,19 @@ func (p *parser) parseLabel(label string) error {
  */
 func (p *parser) addInstruction(mnemonic int, addressMode int, size int, hasValue bool, symbol string, value int) error {
 	instr := new(instruction)
-	if (p.lastCode.instr == nil) {
-		p.lastCode.instr = instr
+	if (p.currentCode.instr == nil) {
+		p.currentCode.instr = instr
 		instr.prev = nil
-	} else if p.lastCode.lastInstr != nil {
-		instr.prev = p.lastCode.lastInstr
-		p.lastCode.lastInstr.next = instr
+	} else if p.currentCode.lastInstr != nil {
+		instr.prev = p.currentCode.lastInstr
+		p.currentCode.lastInstr.next = instr
 	}
-	p.lastCode.lastInstr = instr
+	p.currentCode.lastInstr = instr
 	instr.next = nil
 
 	instr.hasValue = hasValue
-	instr.symbol = strings.ToLower(symbol)
+	instr.symbol = symbol
+	instr.symbolLC = strings.ToLower(symbol)
 
 	instr.mnemonic = mnemonic
 	instr.addressMode = addressMode
@@ -1084,12 +1096,7 @@ func (p *parser) addInstruction(mnemonic int, addressMode int, size int, hasValu
 
 	// Label inherits the previous instruction address (or the block if its the first instruction)
 	if mnemonic == 0 {
-		if (instr.prev == nil) {
-			instr.address = p.lastCode.startAddr
-		} else {
-			instr.address = instr.prev.address + instr.prev.len
-		}
-
+		instr.address = p.currentCode.endAddr
 		return nil
 	}
 
@@ -1102,12 +1109,8 @@ func (p *parser) addInstruction(mnemonic int, addressMode int, size int, hasValu
 			instr.prefix = o.size
 			instr.opcode = o.opcode
 			instr.len = o.len
-			if (instr.prev == nil) {
-				instr.address = p.lastCode.startAddr
-			} else {
-				instr.address = instr.prev.address + instr.prev.len
-				p.lastCode.endAddr = instr.address + o.len
-			}
+			instr.address = p.currentCode.endAddr
+			p.currentCode.endAddr += o.len
 
 			// Remember the size of the opcode for each of A, X, and Y registers
 			switch (m.reg) {
@@ -1124,6 +1127,13 @@ func (p *parser) addInstruction(mnemonic int, addressMode int, size int, hasValu
 	}
 
 	return fmt.Errorf("invalid address mode %s invalid for %s", addressModeStr(addressMode), strings.ToUpper(m.name))
+}
+
+/*
+ *  Add a label
+ */
+func (p *parser) addInstructionLabel(label string) {
+	p.addInstruction(0, unknownMode, A16, false, label, 0)
 }
 
 

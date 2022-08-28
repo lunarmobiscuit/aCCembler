@@ -78,9 +78,14 @@ func (b *codeBlock) lookupInstructionLabel(symbol string) (int, error) {
 
 	// Look at every code entry
 	for i := b.instr; i != nil; i = i.next {
-		if (i.mnemonic == 0) && (i.symbol == symbolLC) {
+		if (i.mnemonic == 0) && (i.symbolLC == symbolLC) {
 			return i.address, nil
 		}
+	}
+
+	// If not found, try the parent block
+	if (b.up != nil) {
+		return b.up.lookupInstructionLabel(symbol)
 	}
 
 	// Not found
