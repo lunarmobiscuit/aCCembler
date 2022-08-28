@@ -238,7 +238,8 @@ func (p *parser) parseLoop(token string) error {
 	// Add the code for the LOOP
 	b := p.addCodeBlock(sub, "LOOP", name, true);
 
-	p.addInstructionLabel(name + "_loop")
+	loopLabel := name + "_loop"
+	p.addInstructionLabel(loopLabel)
 
 	// Parse the code
 	err := p.parseCode(name)
@@ -247,16 +248,14 @@ func (p *parser) parseLoop(token string) error {
 	}
 
 	// How far back is the top of the loop?
-	target, err := p.currentCode.lookupInstructionLabel(name + "_loop")
-	distance := p.currentCode.endAddr - target + 4
-	if (distance < 0x7FFF) {
-		loopSz := A16
-		if (distance > 0x07F) {
-			loopSz = A24
-		}
-		p.addExprInstructionWithSymbol("bra", modeRelative, loopSz, 0, name + "_loop", false)
+	target, err := p.currentCode.lookupInstructionLabel(loopLabel)
+	distance := p.currentCode.endAddr - target
+	if (distance+2 < 0x07F) {
+		p.addExprInstructionWithSymbol("bra", modeRelative, A16, -(distance+2), loopLabel, true)
+	} else if (distance+4 < 0x7FFF) {
+		p.addExprInstructionWithSymbol("bra", modeRelative, A24, -(distance+4), loopLabel, true)
 	} else {
-		p.addExprInstructionWithSymbol("jmp", modeAbsolute, A24, 0, name + "_loop", false)
+		p.addExprInstructionWithSymbol("jmp", modeAbsolute, A24, target, loopLabel, true)
 	}
 
 	// Add a label to the end of the block
@@ -433,15 +432,13 @@ func (p *parser) parseDo(token string) error {
 
 	// How far back is the top of the loop?
 	target, err := p.currentCode.lookupInstructionLabel(loopLabel)
-	distance := p.currentCode.endAddr - target + 4
-	if (distance < 0x7FFF) {
-		loopSz := A16
-		if (distance > 0x07F) {
-			loopSz = A24
-		}
-		p.addExprInstructionWithSymbol("bra", modeRelative, loopSz, 0, loopLabel, false)
+	distance := p.currentCode.endAddr - target
+	if (distance+2 < 0x07F) {
+		p.addExprInstructionWithSymbol("bra", modeRelative, A16, -(distance+2), loopLabel, true)
+	} else if (distance+4 < 0x7FFF) {
+		p.addExprInstructionWithSymbol("bra", modeRelative, A24, -(distance+4), loopLabel, true)
 	} else {
-		p.addExprInstructionWithSymbol("jmp", modeAbsolute, A24, 0, loopLabel, false)
+		p.addExprInstructionWithSymbol("jmp", modeAbsolute, A24, target, loopLabel, true)
 	}
 
 	// Add a label to the end of the block
@@ -472,17 +469,16 @@ func (p *parser) parseContinue(token string) error {
 		return fmt.Errorf("CONTINUE called outside of a loop")
 	}
 
-	label := strings.ToLower(loop.name + "_start")
-	target, _ := p.currentCode.lookupInstructionLabel(label)
-	distance := p.currentCode.endAddr - target + 4
-	if (distance < 0x7FFF) {
-		loopSz := A16
-		if (distance > 0x07F) {
-			loopSz = A24
-		}
-		p.addExprInstructionWithSymbol("bra", modeRelative, loopSz, 0, label, false)
+	// How far back is the top of the loop?
+	loopLabel := strings.ToLower(loop.name + "_start")
+	target, _ := p.currentCode.lookupInstructionLabel(loopLabel)
+	distance := p.currentCode.endAddr - target
+	if (distance+2 < 0x07F) {
+		p.addExprInstructionWithSymbol("bra", modeRelative, A16, -(distance+2), loopLabel, true)
+	} else if (distance+4 < 0x7FFF) {
+		p.addExprInstructionWithSymbol("bra", modeRelative, A24, -(distance+4), loopLabel, true)
 	} else {
-		p.addExprInstructionWithSymbol("jmp", modeAbsolute, A24, 0, label, false)
+		p.addExprInstructionWithSymbol("jmp", modeAbsolute, A24, target, loopLabel, true)
 	}
 
 	return nil

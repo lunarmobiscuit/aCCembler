@@ -91,6 +91,8 @@ sub EchoKeys {
 		IF == {
 			lda #':'					; Draw the prompt
 			jsr PrintChar
+			lda #$DF					; Draw the cursor '_' | 0x80
+			jsr PrintCursor
 		}
 		LOOP {
 			bit KBD 					; check keyboard for next key
@@ -100,13 +102,15 @@ sub EchoKeys {
 		}
 		lda KBD 						; get the key code from the keyboard
 		bit KBDSTRB						; clear keyboard strobe (a.k.a. ack keyboard read)
-		if == $8D {						; 13 = CR ($80 | $0D in high ASCII)
+		IF == $8D {						; 13 = CR ($80 | $0D in high ASCII)
+			lda #$A0					; delete the cursor by drawing a ' ' | 0x80
+			sta (@TXTPTR),y
 			jsr NextLine
 			jsr CommandLine
 			jsr ClearInputBuffer
 			CONTINUE
 		}						
-		if == $88 {						; 8 = BS ($80 | $08 in high ASCII)
+		IF == $88 {						; 8 = BS ($80 | $08 in high ASCII)
 			lda @TXTPOS
 			if > 1 {
 				tay
@@ -117,7 +121,7 @@ sub EchoKeys {
 			}
 			CONTINUE
 		}
-		if == $9B {						; 27 = ESC ($80 | $1B in high ASCII)
+		IF == $9B {						; 27 = ESC ($80 | $1B in high ASCII)
 			ldx #2
 			jsr ClearScreen				; clear the screen (x = row 2)
 			lda #2
@@ -126,15 +130,16 @@ sub EchoKeys {
 			sta @TXTPOS					; reset to position 0
 			CONTINUE
 		}
-		if > $9F {						; 31 = Last control character ($80 | $1F in high ASCII)
+		IF > $9F {						; >31 = Not a control character ($80 | $1F in high ASCII)
 			ldy @TXTPOS
+			jsr PrintChar
 			cpy #40 					; ignore if >= column 40
-			IF != {
-				sta (@TXTPTR),y
-				and #$7F							; store (low) ASCII in TEXT buffer
-				dey
+			IF < {
+				and #$7F				; store (low) ASCII in TEXT buffer
+				dey 					; Y-1 as TEXT position starts at 1, making space for the prompt
 				sta @TXTBUFFER,y
-				inc @TXTPOS							; next position
+				lda #$DF			; '_' | 0x80
+				jsr PrintCursor
 			}
 		}
 	}
@@ -317,8 +322,25 @@ sub PrintString {
  */
 sub PrintChar {
 	ldy @TXTPOS
-	sta (@TXTPTR),y
-	inc @TXTPOS
+	cpy #40 					; ignore if >= column 40
+	IF < {
+		sta (@TXTPTR),y
+		inc @TXTPOS
+	}
+	RETURN
+}
+
+/*
+ *  Print a character
+ *  A = ASCII character
+ *  TXTPOS is NOT updated
+ */
+sub PrintCursor {
+	ldy @TXTPOS
+	cpy #40 					; ignore if >= column 40
+	IF < {
+		sta (@TXTPTR),y
+	}
 	RETURN
 }
 
@@ -338,19 +360,17 @@ sub PrintSpace {
  *  A = value to print
  */
 sub PrintDebugValue {				
-	pha
-
-	pha
-	A >>= 4
+	pha						; Save A
+	pha						; Copy A for 2nd digit
+	A >>= 4					; Draw hex of 1st nibble
 	IF >= 10 {
 		A += $B7
 	}
 	ELSE {
 		A += $B0
 	}
-	sta $426
-
-	pla
+	sta $426				; Hardcoded to top-right corner of the TEXT screen
+	pla						; Draw hex of 2nd nibble
 	A &= $0F
 	IF >= 10 {
 		A += $B7
@@ -358,9 +378,8 @@ sub PrintDebugValue {
 	ELSE {
 		A += $B0
 	}
-	sta $427
-
-	pla
+	sta $427				; Hardcoded to top-right corner of the TEXT screen
+	pla						; Restore A
 	RETURN
 }
 
