@@ -58,7 +58,7 @@ sub Reset @$FF0200 {
 	lda CLRROM					; turn off extension ROM
 	bit KBDSTRB					; clear keyboard
 	ldx #0
-	jsr ClearScreen			; clear the screen (x = row 0)
+	jsr ClearScreen				; clear the screen (x = row 0)
 	jsr AppleII4				; draw the header
 	lda #2
 	sta @TXTROW					; Start at TEXT row 2
@@ -88,16 +88,16 @@ sub EchoKeys {
 	LOOP {
 		jsr ScreenBase					; Set the @TEXTPTR based on @TXTROW
 		lda @TXTPOS
-		bne +echo_read
-	 draw_prompt:
-		ldy #0							; Draw the prompt
-		lda #':'
-		sta (@TXTPTR),y
-		iny
-		sty @TXTPOS
-	 echo_read:
-		bit KBD 						; check keyboard for next key
-		bpl -echo_read
+		IF == {
+			lda #':'					; Draw the prompt
+			jsr PrintChar
+		}
+		LOOP {
+			bit KBD 					; check keyboard for next key
+			IF - {
+				BREAK
+			}
+		}
 		lda KBD 						; get the key code from the keyboard
 		bit KBDSTRB						; clear keyboard strobe (a.k.a. ack keyboard read)
 		if == $8D {						; 13 = CR ($80 | $0D in high ASCII)

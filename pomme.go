@@ -99,7 +99,8 @@ const (
 	KW_ELSE
 	KW_LOOP
 	KW_FOR
-	KW__DO
+	KW_DO
+	KW_WHILE
 )
 
 // Sub-block created by a keyword

@@ -19,11 +19,31 @@ var keywords = []string {
 	"if",
 	"loop",
 	"for",
+	"do",
 	"while",
 	"break",
 	"continue",
 	"return",
 }
+
+// Boolean expression in IF, WHILE, etc.
+type boolExpr struct {
+	opEq 		bool
+	opNe 		bool
+	opGe 		bool
+	opGt 		bool
+	opLt 		bool
+	opLe 		bool
+	opPl 		bool
+	opMi 		bool
+
+	value		int
+	hasValue	bool
+	size		int
+
+	string		string
+}
+
 
 /*
  *  Lookup the keyword
@@ -51,6 +71,7 @@ func (p *parser) parseKeyword(token string) error {
 	case "if": return p.parseIf(token)
 	case "loop": return p.parseLoop(token)
 	case "for": return p.parseFor(token)
+	case "do": return p.parseDo(token)
 	case "while": return p.parseWhile(token)
 	case "continue": return p.parseContinue(token)
 	case "break": return p.parseBreak(token)
@@ -80,7 +101,7 @@ func (p *parser) parsePrint(token string) error {
  *  Parse the 'os' keyword
  */
 func (p *parser) parseOs(token string) error {
-	fmt.Printf("IF is not yet supported [%d-%d]\n", p.i, p.n)
+	fmt.Printf("OS is not yet supported [%d-%d]\n", p.i, p.n)
 	return nil
 }
 
@@ -93,68 +114,16 @@ func (p *parser) parseIf(token string) error {
 	sub.startAddr = p.currentCode.endAddr
 	sub.endAddr = sub.startAddr
 
-	opEq := false
-	opNe := false
-	opGe := false
-	opGt := false
-	opLt := false
-	opLe := false
+	// Optional (
 	p.skipWhitespace()
-	sym1 := p.peekChar()
-	sym2 := p.peekAhead(1)
-	if (sym1 == '(') {
-		return fmt.Errorf("IF ( not yet implemented")
-	} else if (sym1 == '=') && (sym2 == '=') {
-		opEq = true
-		p.skip(2)
-	} else if (sym1 == '!') && (sym2 == '=') {
-		opNe = true
-		p.skip(2)
-	} else if (sym1 == '>') && (sym2 == '=') {
-		opGe = true
-		p.skip(2)
-	} else if (sym1 == '<') && (sym2 == '=') {
-		opLe = true
-		p.skip(2)
-	} else if (sym1 == '>') {
-		opGt = true
-		p.skip(2)
-	} else if (sym1 == '<') {
-		opLt = true
-		p.skip(2)
-	} else {
-		return fmt.Errorf("IF %c%c is an unknown syntax", sym1, sym2)
+	sym := p.peekChar()
+	if (sym == '(') {
+		p.skip(1)
 	}
 
-	hasValue := false
-	var value int
-	var err error
-	ifSz := R08
-	p.skipWhitespace()
-	if (p.peekChar() != '{') {
-		// Constant
-		if (p.isNextAZ()) {
-			symbol := p.nextAZ_az_09()
-			value, err = p.lookupConstant(symbol)
-			if (err != nil) {
-				return fmt.Errorf("invalid constant '%s' in IF", symbol)
-			}
-		// Value
-		} else {
-			value, err = p.nextValue()
-			if (err != nil) {
-				return fmt.Errorf("invalid value in IF")
-			}
-		}
-		
-		hasValue = true
-		if (value > 0x0FFFFFF) {
-			fmt.Errorf("IF %d does not fit into 24-bits", value)
-		} else if (value > 0x0FFFF) {
-			ifSz = R24
-		} else if (value > 0x0FF) {
-			ifSz = R16
-		}
+	be, err := p.parseBooleanExpression("IF")
+	if (err != nil) {
+		return err
 	}
 
 	p.skipWhitespace()
@@ -167,42 +136,15 @@ func (p *parser) parseIf(token string) error {
 	name := fmt.Sprintf("IF%x", p.currentCode.endAddr)
 
 	// Add the instruction with the sub in the current block (before starting a new block)
-	opStr := "=="
-	if (opEq) { opStr = "=="
-	} else if (opNe) { opStr = "!="
-	} else if (opGe) { opStr = ">="
-	} else if (opGt) { opStr = ">"
-	} else if (opLt) { opStr = "<"
-	} else if (opLe) { opStr = "<=" }
-	valStr := ""
-	if (hasValue) { valStr = fmt.Sprintf(" %d", value)}
-	comment := fmt.Sprintf("IF %s%s {", opStr, valStr)
+	comment := fmt.Sprintf("IF %s {", be.string)
 	p.addKeywordInstruction(sub, comment)
 
 	// Add the code for the IF
 	b := p.addCodeBlock(sub, "IF", name, false);
 
-	// Have to assume the branch is far, but not beyond a signed 16-bits
-	if (hasValue) {
-		p.addExprInstruction("cmp", modeImmediate, ifSz, value)
-	}
-	var skipInstr *instruction
-	if (opEq) {
-		skipInstr = p.addExprInstructionWithSymbol("bne", modeRelative, A16, 0, name + "_end", false)
-	} else if (opNe) {
-		skipInstr = p.addExprInstructionWithSymbol("beq", modeRelative, A16, 0, name + "_end", false)
-	} else if (opGe) {
-		skipInstr = p.addExprInstructionWithSymbol("bcc", modeRelative, A16, 0, name + "_end", false)
-	} else if (opGt) {
-		skipInstr = p.addExprInstructionWithSymbol("beq", modeRelative, A16, 0, name + "_end", false)
-		skipInstr = p.addExprInstructionWithSymbol("bcc", modeRelative, A16, 0, name + "_end", false)
-	} else if (opLt) {
-		skipInstr = p.addExprInstructionWithSymbol("bcs", modeRelative, A16, 0, name + "_end", false)
-	} else if (opLe) {
-		skipInstr = p.addExprInstructionWithSymbol("beq", modeRelative, A16, 0, name + "_if", false)
-		skipInstr = p.addExprInstructionWithSymbol("bcs", modeRelative, A16, 0, name + "_end", false)
-		p.addInstructionLabel(b.name + "_if")
-	}
+	// Generate the code for the boolan expression
+	endLabel := name + "_end"
+	skipInstr := p.outputBooleanExpression(*be, endLabel)
 
 	// Parse the code
 	err = p.parseCode(name)
@@ -224,12 +166,17 @@ func (p *parser) parseIf(token string) error {
 		p.skipWhitespaceAndEOL()
 
 		// Jump from the end of the IF block to after the ELSE
-		p.addExprInstructionWithSymbol("bra", modeRelative, A16, 0, name + "_end", false)
+		p.addExprInstructionWithSymbol("bra", modeRelative, A16, 0, endLabel, false)
 
-		// Add a label to where the else goes, and change the NOT IF branch to here
-		skipInstr.symbol = name + "_else"
+		// Add a label to where the else goes, and change the NOT IF branch to the ELSE block
+		if (skipInstr.prev != nil) && (skipInstr.prev.symbol == endLabel) {
+			skipInstr.prev.symbol = name + "_else"
+			skipInstr.prev.symbolLC = strings.ToLower(skipInstr.symbol)
+		}
+		elseLabel := name + "_else"
+		skipInstr.symbol = elseLabel
 		skipInstr.symbolLC = strings.ToLower(skipInstr.symbol)
-		p.addInstructionLabel(b.name + "_else")
+		p.addInstructionLabel(elseLabel)
 
 		// Go back to parsing code for the main block
 		p.endCodeBlock(sub)
@@ -426,6 +373,87 @@ func (p *parser) parseFor(token string) error {
 }
 
 /*
+ *  Parse the 'do' keyword
+ */
+func (p *parser) parseDo(token string) error {
+	sub := new(subBlock)
+	sub.keyword = KW_DO
+	sub.startAddr = p.currentCode.endAddr
+	sub.endAddr = sub.startAddr
+
+	p.skipWhitespace()
+	if (p.nextChar() != '{') {
+		return fmt.Errorf("missing { in DO")
+	}
+	p.skipWhitespaceAndEOL()
+
+	// Name this construct
+	name := fmt.Sprintf("DO%x", p.currentCode.endAddr)
+
+	// Add the instruction with the sub in the current block (before starting a new block)
+	comment := "DO {"
+	p.addKeywordInstructionAndLabel(sub, comment, name)
+
+	// Add the code for the DO
+	p.addCodeBlock(sub, "DO", name, true);
+
+	loopLabel := name + "_loop"
+	p.addInstructionLabel(loopLabel)
+
+	// Parse the code
+	err := p.parseCode(name)
+	if (err != nil) {
+		return err
+	}
+
+	while := strings.ToUpper(p.nextAZ_az_09())
+	if (while != "WHILE") {
+		return fmt.Errorf("DO without WHILE")
+	}
+
+	// Optional (
+	p.skipWhitespace()
+	sym := p.peekChar()
+	if (sym == '(') {
+		p.skip(1)
+	}
+
+	// Parse the WHILE
+	var be *boolExpr
+	be, err = p.parseBooleanExpression("WHILE")
+	if (err != nil) {
+		return err
+	}
+	p.skipWhitespaceAndEOL()
+
+	// Generate the code for the boolean expression
+	p.addInstructionComment("WHILE " + be.string)
+	endLabel := name + "_end"
+	p.outputBooleanExpression(*be, endLabel)
+
+	// How far back is the top of the loop?
+	target, err := p.currentCode.lookupInstructionLabel(loopLabel)
+	distance := p.currentCode.endAddr - target + 4
+	if (distance < 0x7FFF) {
+		loopSz := A16
+		if (distance > 0x07F) {
+			loopSz = A24
+		}
+		p.addExprInstructionWithSymbol("bra", modeRelative, loopSz, 0, loopLabel, false)
+	} else {
+		p.addExprInstructionWithSymbol("jmp", modeAbsolute, A24, 0, loopLabel, false)
+	}
+
+	// Add a label to the end of the block
+	p.addInstructionLabel(endLabel)
+
+	// Go back to parsing code for the main block
+	p.endCodeBlock(sub)
+
+	return nil
+}
+
+/*
  *  Parse the 'while' keyword
  */
 func (p *parser) parseWhile(token string) error {
@@ -513,6 +541,144 @@ func (p *parser) parseReturn(token string) error {
 		p.addExprInstruction("lda", modeImmediate, returnSz, value)
 	}
 	p.addExprInstruction("rts", modeImplicit, A24, 0)
+
+	return nil
+}
+
+
+/*
+ *  Parse the boolean expression in an IF, WHILE, etc.
+ */
+func (p *parser) parseBooleanExpression(keyword string) (*boolExpr, error) {
+	be := new(boolExpr)
+
+	// Reset the possibilities
+	be.opEq = false
+	be.opNe = false
+	be.opGe = false
+	be.opGt = false
+	be.opLt = false
+	be.opLe = false
+	be.opPl = false
+	be.opMi = false
+
+	// Parse the expression
+	p.skipWhitespace()
+	sym1 := p.peekChar()
+	sym2 := p.peekAhead(1)
+	if (sym1 == '=') && (sym2 == '=') {
+		be.opEq = true
+		p.skip(2)
+	} else if (sym1 == '!') && (sym2 == '=') {
+		be.opNe = true
+		p.skip(2)
+	} else if (sym1 == '>') && (sym2 == '=') {
+		be.opGe = true
+		p.skip(2)
+	} else if (sym1 == '<') && (sym2 == '=') {
+		be.opLe = true
+		p.skip(2)
+	} else if (sym1 == '>') {
+		be.opGt = true
+		p.skip(1)
+	} else if (sym1 == '<') {
+		be.opLt = true
+		p.skip(1)
+	} else if (sym1 == '+') {
+		be.opPl = true
+		p.skip(1)
+	} else if (sym1 == '-') {
+		be.opMi = true
+		p.skip(1)
+	} else {
+		return nil, fmt.Errorf("%s %c%c is an unknown syntax", keyword, sym1, sym2)
+	}
+
+	var err error
+	be.hasValue = false
+	be.size = R08
+	p.skipWhitespace()
+	sym := p.peekChar()
+	if (sym != '{') && (sym != ')') {
+		// Constant
+		if (p.isNextAZ()) {
+			symbol := p.nextAZ_az_09()
+			be.value, err = p.lookupConstant(symbol)
+			if (err != nil) {
+				return nil, fmt.Errorf("invalid constant '%s' in %s", symbol, keyword)
+			}
+		// Value
+		} else {
+			be.value, err = p.nextValue()
+			if (err != nil) {
+				return nil, fmt.Errorf("invalid value in %s", keyword)
+			}
+		}
+		
+		be.hasValue = true
+		if (be.value > 0x0FFFFFF) {
+			fmt.Errorf("%s %d does not fit into 24-bits", keyword, be.value)
+		} else if (be.value > 0x0FFFF) {
+			be.size = R24
+		} else if (be.value > 0x0FF) {
+			be.size = R16
+		}
+	}
+	if (sym == ')') {
+		p.skip(1)
+	}
+	p.skipWhitespace()
+	sym = p.peekChar()
+	if (sym == ')') {
+		p.skip(1)
+	}
+
+	if (be.opEq) { be.string = "=="
+	} else if (be.opNe) { be.string = "!="
+	} else if (be.opGe) { be.string = ">="
+	} else if (be.opGt) { be.string = ">"
+	} else if (be.opLt) { be.string = "<"
+	} else if (be.opLe) { be.string = "<="
+	} else if (be.opPl) { be.string = "+"
+	} else if (be.opMi) { be.string = "-" }
+	if be.hasValue {
+		be.string += fmt.Sprintf(" %d", be.value)
+	}
+
+	return be, nil
+}
+
+/*
+ *  Output the code for the boolean expression in an IF, WHILE, etc.
+ */
+func (p *parser) outputBooleanExpression(be boolExpr, label string) *instruction {
+	// If there a value, then do the compare
+	if (be.hasValue) {
+		p.addExprInstruction("cmp", modeImmediate, be.size, be.value)
+	}
+
+	// Generate the opposite branch logic to skip the block
+	if (be.opEq) {
+		return p.addExprInstructionWithSymbol("bne", modeRelative, A16, 0, label, false)
+	} else if (be.opNe) {
+		return p.addExprInstructionWithSymbol("beq", modeRelative, A16, 0, label, false)
+	} else if (be.opGe) {
+		return p.addExprInstructionWithSymbol("bcc", modeRelative, A16, 0, label, false)
+	} else if (be.opGt) {
+		p.addExprInstructionWithSymbol("beq", modeRelative, A16, 0, label, false)
+		return p.addExprInstructionWithSymbol("bcc", modeRelative, A16, 0, label, false)
+	} else if (be.opLt) {
+		return p.addExprInstructionWithSymbol("bcs", modeRelative, A16, 0, label, false)
+	} else if (be.opLe) {
+		p.addExprInstructionWithSymbol("beq", modeRelative, A16, 0, label + "_eq", false)
+		skipIntr := p.addExprInstructionWithSymbol("bcs", modeRelative, A16, 0, label, false)
+		p.addInstructionLabel(label + "_eq")
+		return skipIntr
+	} else if (be.opPl) {
+		return p.addExprInstructionWithSymbol("bmi", modeRelative, A16, 0, label, false)
+	} else if (be.opMi) {
+		return p.addExprInstructionWithSymbol("bpl", modeRelative, A16, 0, label, false)
+	}
 
 	return nil
 }

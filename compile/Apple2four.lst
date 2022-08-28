@@ -6,8 +6,8 @@
 
 ff0000 ; SUB Start:
 ff0000 4f 4c 00 02 ff     jmp.a24 $ff0200
-ff0005 4f 4c 78 04 ff     jmp.a24 $ff0478
-ff000a 4f 4c bd 04 ff     jmp.a24 $ff04bd
+ff0005 4f 4c 7d 04 ff     jmp.a24 $ff047d
+ff000a 4f 4c c2 04 ff     jmp.a24 $ff04c2
 
 ; 497 BYTES of FILLER
 
@@ -24,7 +24,7 @@ ff0213 ad 5f c0           lda $c05f
 ff0216 ad ff cf           lda $cfff
 ff0219 2c 10 c0           bit $c010
 ff021c a2 00              ldx #$0
-ff021e 4f 20 78 04 ff     jsr.a24 $ff0478
+ff021e 4f 20 7d 04 ff     jsr.a24 $ff047d
 ff0223 4f 20 37 02 ff     jsr.a24 $ff0237
 ff0228 a9 02              lda #$2
 ff022a 8d ff 03           sta $03ff
@@ -48,453 +48,459 @@ ff024a                  FORff0237_end:
 ff024a 4f 60              rts.a24
 
 ff024c ; SUB EchoKeys:
-ff024c 4f 20 f8 04 ff     jsr.a24 $ff04f8
+ff024c 4f 20 fd 04 ff     jsr.a24 $ff04fd
 ff0251                  LOOPff0251_start:
 ff0251                   ; LOOP {
 ff0251                  LOOPff0251_loop:
-ff0251 4f 20 6a 04 ff     jsr.a24 $ff046a
+ff0251 4f 20 6f 04 ff     jsr.a24 $ff046f
 ff0256 ad fe 03           lda $03fe
-ff0259 d0 0a              bne +10 [ff0265] echo_read
-ff025b                  draw_prompt:
-ff025b a0 00              ldy #$0
-ff025d a9 3a              lda #$3a
-ff025f 91 fe              sta ($fe),Y
-ff0261 c8                 iny
-ff0262 8c fe 03           sty $03fe
-ff0265                  echo_read:
-ff0265 2c 00 c0           bit $c000
-ff0268 10 fb              bpl -5 [ff0265] echo_read
-ff026a ad 00 c0           lda $c000
-ff026d 2c 10 c0           bit $c010
-ff0270                   ; IF == 141 {
-ff0270 c9 8d              cmp #$8d
-ff0272 d0 11              bne +17 [ff0285] IFff0270_end
-ff0274 4f 20 94 04 ff     jsr.a24 $ff0494
-ff0279 4f 20 d0 02 ff     jsr.a24 $ff02d0
-ff027e 4f 20 f8 04 ff     jsr.a24 $ff04f8
-ff0283                   ; CONTINUE
-ff0283 80 cc              bra -52 [ff0251] loopff0251_start
-ff0285                  IFff0270_end:
-ff0285                   ; IF == 136 {
-ff0285 c9 88              cmp #$88
-ff0287 d0 14              bne +20 [ff029d] IFff0285_end
-ff0289 ad fe 03           lda $03fe
-ff028c                   ; IF > 1 {
-ff028c c9 01              cmp #$1
-ff028e f0 0b              beq +11 [ff029b] IFff028c_end
-ff0290 90 09              bcc +9 [ff029b] IFff028c_end
-ff0292 a8                 tay
-ff0293 88                 dey
-ff0294 8c fe 03           sty $03fe
-ff0297 a9 a0              lda #$a0
-ff0299 91 fe              sta ($fe),Y
-ff029b                  IFff028c_end:
-ff029b                   ; CONTINUE
-ff029b 80 b4              bra -76 [ff0251] loopff0251_start
-ff029d                  IFff0285_end:
-ff029d                   ; IF == 155 {
-ff029d c9 9b              cmp #$9b
-ff029f d0 13              bne +19 [ff02b4] IFff029d_end
-ff02a1 a2 02              ldx #$2
-ff02a3 4f 20 78 04 ff     jsr.a24 $ff0478
-ff02a8 a9 02              lda #$2
-ff02aa 8d ff 03           sta $03ff
-ff02ad a9 00              lda #$0
-ff02af 8d fe 03           sta $03fe
-ff02b2                   ; CONTINUE
-ff02b2 80 9d              bra -99 [ff0251] loopff0251_start
-ff02b4                  IFff029d_end:
-ff02b4                   ; IF > 159 {
-ff02b4 c9 9f              cmp #$9f
-ff02b6 f0 14              beq +20 [ff02cc] IFff02b4_end
-ff02b8 90 12              bcc +18 [ff02cc] IFff02b4_end
-ff02ba ac fe 03           ldy $03fe
-ff02bd c0 28              cpy #$28
-ff02bf                   ; IF != {
-ff02bf f0 0b              beq +11 [ff02cc] IFff02bf_end
-ff02c1 91 fe              sta ($fe),Y
-ff02c3 29 7f              and #$7f
-ff02c5 88                 dey
-ff02c6 99 00 02           sta $0200,Y
-ff02c9 ee fe 03           inc $03fe
-ff02cc                  IFff02bf_end:
-ff02cc                  IFff02b4_end:
-ff02cc 80 83              bra -125 [ff0251] LOOPff0251_loop
-ff02ce                  LOOPff0251_end:
+ff0259                   ; IF == {
+ff0259 d0 07              bne +7 [ff0262] IFff0259_end
+ff025b a9 3a              lda #$3a
+ff025d 4f 20 0d 04 ff     jsr.a24 $ff040d
+ff0262                  IFff0259_end:
+ff0262                  LOOPff0262_start:
+ff0262                   ; LOOP {
+ff0262                  LOOPff0262_loop:
+ff0262 2c 00 c0           bit $c000
+ff0265                   ; IF - {
+ff0265 10 04              bpl +4 [ff026b] IFff0265_end
+ff0267                   ; BREAK
+ff0267 4f 80 02 00        bra.a24 +2 [ff026d] loopff0262_end
+ff026b                  IFff0265_end:
+ff026b 80 f5              bra -11 [ff0262] LOOPff0262_loop
+ff026d                  LOOPff0262_end:
+ff026d ad 00 c0           lda $c000
+ff0270 2c 10 c0           bit $c010
+ff0273                   ; IF == 141 {
+ff0273 c9 8d              cmp #$8d
+ff0275 d0 11              bne +17 [ff0288] IFff0273_end
+ff0277 4f 20 99 04 ff     jsr.a24 $ff0499
+ff027c 4f 20 d5 02 ff     jsr.a24 $ff02d5
+ff0281 4f 20 fd 04 ff     jsr.a24 $ff04fd
+ff0286                   ; CONTINUE
+ff0286 80 c9              bra -55 [ff0251] loopff0251_start
+ff0288                  IFff0273_end:
+ff0288                   ; IF == 136 {
+ff0288 c9 88              cmp #$88
+ff028a d0 14              bne +20 [ff02a0] IFff0288_end
+ff028c ad fe 03           lda $03fe
+ff028f                   ; IF > 1 {
+ff028f c9 01              cmp #$1
+ff0291 f0 0b              beq +11 [ff029e] IFff028f_end
+ff0293 90 09              bcc +9 [ff029e] IFff028f_end
+ff0295 a8                 tay
+ff0296 88                 dey
+ff0297 8c fe 03           sty $03fe
+ff029a a9 a0              lda #$a0
+ff029c 91 fe              sta ($fe),Y
+ff029e                  IFff028f_end:
+ff029e                   ; CONTINUE
+ff029e 80 b1              bra -79 [ff0251] loopff0251_start
+ff02a0                  IFff0288_end:
+ff02a0                   ; IF == 155 {
+ff02a0 c9 9b              cmp #$9b
+ff02a2 d0 13              bne +19 [ff02b7] IFff02a0_end
+ff02a4 a2 02              ldx #$2
+ff02a6 4f 20 7d 04 ff     jsr.a24 $ff047d
+ff02ab a9 02              lda #$2
+ff02ad 8d ff 03           sta $03ff
+ff02b0 a9 00              lda #$0
+ff02b2 8d fe 03           sta $03fe
+ff02b5                   ; CONTINUE
+ff02b5 80 9a              bra -102 [ff0251] loopff0251_start
+ff02b7                  IFff02a0_end:
+ff02b7                   ; IF > 159 {
+ff02b7 c9 9f              cmp #$9f
+ff02b9 f0 14              beq +20 [ff02cf] IFff02b7_end
+ff02bb 90 12              bcc +18 [ff02cf] IFff02b7_end
+ff02bd ac fe 03           ldy $03fe
+ff02c0 c0 28              cpy #$28
+ff02c2                   ; IF != {
+ff02c2 f0 0b              beq +11 [ff02cf] IFff02c2_end
+ff02c4 91 fe              sta ($fe),Y
+ff02c6 29 7f              and #$7f
+ff02c8 88                 dey
+ff02c9 99 00 02           sta $0200,Y
+ff02cc ee fe 03           inc $03fe
+ff02cf                  IFff02c2_end:
+ff02cf                  IFff02b7_end:
+ff02cf 4f 80 7e ff        bra.a24 -130 [ff0251] LOOPff0251_loop
+ff02d3                  LOOPff0251_end:
 
-ff02ce ; DATA ShouldNotGetHere:
-ff02ce fe
-ff02cf db
+ff02d3 ; DATA ShouldNotGetHere:
+ff02d3 fe
+ff02d4 db
 
-ff02d0 ; SUB CommandLine:
-ff02d0 2f a9 3a 80 ff     lda.t #$ff803a
-ff02d5 2f 85 00           sta.t $00
-ff02d8 4f 20 56 03 ff     jsr.a24 $ff0356
-ff02dd                   ; IF != {
-ff02dd f0 07              beq +7 [ff02e6] IFff02dd_end
-ff02df 4f 20 80 03 ff     jsr.a24 $ff0380
-ff02e4 4f 60              rts.a24
-ff02e6                  IFff02dd_end:
-ff02e6 2f a9 40 80 ff     lda.t #$ff8040
-ff02eb 2f 85 00           sta.t $00
-ff02ee 4f 20 56 03 ff     jsr.a24 $ff0356
-ff02f3                   ; IF != {
-ff02f3 f0 07              beq +7 [ff02fc] IFff02f3_end
-ff02f5 4f 20 93 03 ff     jsr.a24 $ff0393
-ff02fa 4f 60              rts.a24
-ff02fc                  IFff02f3_end:
-ff02fc 2f a9 47 80 ff     lda.t #$ff8047
-ff0301 2f 85 00           sta.t $00
-ff0304 4f 20 56 03 ff     jsr.a24 $ff0356
-ff0309                   ; IF != {
-ff0309 f0 07              beq +7 [ff0312] IFff0309_end
-ff030b 4f 20 58 04 ff     jsr.a24 $ff0458
-ff0310 4f 60              rts.a24
-ff0312                  IFff0309_end:
-ff0312 2f a9 4d 80 ff     lda.t #$ff804d
-ff0317 2f 85 00           sta.t $00
-ff031a 4f 20 56 03 ff     jsr.a24 $ff0356
-ff031f                   ; IF != {
-ff031f f0 07              beq +7 [ff0328] IFff031f_end
-ff0321 4f 20 5e 04 ff     jsr.a24 $ff045e
-ff0326 4f 60              rts.a24
-ff0328                  IFff031f_end:
-ff0328 2f a9 50 80 ff     lda.t #$ff8050
-ff032d 2f 85 00           sta.t $00
-ff0330 4f 20 56 03 ff     jsr.a24 $ff0356
-ff0335                   ; IF != {
-ff0335 f0 07              beq +7 [ff033e] IFff0335_end
-ff0337 4f 20 07 05 ff     jsr.a24 $ff0507
-ff033c 4f 60              rts.a24
-ff033e                  IFff0335_end:
-ff033e 2f a9 55 80 ff     lda.t #$ff8055
-ff0343 2f 85 00           sta.t $00
-ff0346 4f 20 56 03 ff     jsr.a24 $ff0356
-ff034b                   ; IF != {
-ff034b f0 07              beq +7 [ff0354] IFff034b_end
-ff034d 4f 20 4c 05 ff     jsr.a24 $ff054c
-ff0352 4f 60              rts.a24
-ff0354                  IFff034b_end:
-ff0354 4f 60              rts.a24
+ff02d5 ; SUB CommandLine:
+ff02d5 2f a9 3a 80 ff     lda.t #$ff803a
+ff02da 2f 85 00           sta.t $00
+ff02dd 4f 20 5b 03 ff     jsr.a24 $ff035b
+ff02e2                   ; IF != {
+ff02e2 f0 07              beq +7 [ff02eb] IFff02e2_end
+ff02e4 4f 20 85 03 ff     jsr.a24 $ff0385
+ff02e9 4f 60              rts.a24
+ff02eb                  IFff02e2_end:
+ff02eb 2f a9 40 80 ff     lda.t #$ff8040
+ff02f0 2f 85 00           sta.t $00
+ff02f3 4f 20 5b 03 ff     jsr.a24 $ff035b
+ff02f8                   ; IF != {
+ff02f8 f0 07              beq +7 [ff0301] IFff02f8_end
+ff02fa 4f 20 98 03 ff     jsr.a24 $ff0398
+ff02ff 4f 60              rts.a24
+ff0301                  IFff02f8_end:
+ff0301 2f a9 47 80 ff     lda.t #$ff8047
+ff0306 2f 85 00           sta.t $00
+ff0309 4f 20 5b 03 ff     jsr.a24 $ff035b
+ff030e                   ; IF != {
+ff030e f0 07              beq +7 [ff0317] IFff030e_end
+ff0310 4f 20 5d 04 ff     jsr.a24 $ff045d
+ff0315 4f 60              rts.a24
+ff0317                  IFff030e_end:
+ff0317 2f a9 4d 80 ff     lda.t #$ff804d
+ff031c 2f 85 00           sta.t $00
+ff031f 4f 20 5b 03 ff     jsr.a24 $ff035b
+ff0324                   ; IF != {
+ff0324 f0 07              beq +7 [ff032d] IFff0324_end
+ff0326 4f 20 63 04 ff     jsr.a24 $ff0463
+ff032b 4f 60              rts.a24
+ff032d                  IFff0324_end:
+ff032d 2f a9 50 80 ff     lda.t #$ff8050
+ff0332 2f 85 00           sta.t $00
+ff0335 4f 20 5b 03 ff     jsr.a24 $ff035b
+ff033a                   ; IF != {
+ff033a f0 07              beq +7 [ff0343] IFff033a_end
+ff033c 4f 20 0c 05 ff     jsr.a24 $ff050c
+ff0341 4f 60              rts.a24
+ff0343                  IFff033a_end:
+ff0343 2f a9 55 80 ff     lda.t #$ff8055
+ff0348 2f 85 00           sta.t $00
+ff034b 4f 20 5b 03 ff     jsr.a24 $ff035b
+ff0350                   ; IF != {
+ff0350 f0 07              beq +7 [ff0359] IFff0350_end
+ff0352 4f 20 51 05 ff     jsr.a24 $ff0551
+ff0357 4f 60              rts.a24
+ff0359                  IFff0350_end:
+ff0359 4f 60              rts.a24
 
-ff0356 ; SUB CompareText:
-ff0356                  FORff0356_start:
-ff0356                   ; FOR y = 0 TO 39 {
-ff0356 a0 00              ldy #$0
-ff0358                  FORff0356_loop:
-ff0358 b9 00 02           lda $0200,Y
-ff035b 4f d1 00           cmp.a24 ($00),Y
-ff035e                   ; IF != {
-ff035e f0 04              beq +4 [ff0364] IFff035e_end
-ff0360 a9 00              lda #$0
-ff0362 4f 60              rts.a24
-ff0364                  IFff035e_end:
-ff0364                   ; IF == 0 {
-ff0364 c9 00              cmp #$0
-ff0366 d0 0f              bne +15 [ff0377] IFff0364_end
-ff0368 4f b1 00           lda.a24 ($00),Y
-ff036b                   ; IF == 0 {
-ff036b c9 00              cmp #$0
-ff036d d0 04              bne +4 [ff0373] IFff036b_end
-ff036f a9 ff              lda #$ff
-ff0371 4f 60              rts.a24
-ff0373                  IFff036b_end:
-ff0373 a9 00              lda #$0
-ff0375 4f 60              rts.a24
-ff0377                  IFff0364_end:
-ff0377 c8                 iny
-ff0378 c9 27              cmp #$27
-ff037a d0 dc              bne -36 [ff0358] FORff0356_loop
-ff037c                  FORff0356_end:
-ff037c a9 00              lda #$0
-ff037e 4f 60              rts.a24
+ff035b ; SUB CompareText:
+ff035b                  FORff035b_start:
+ff035b                   ; FOR y = 0 TO 39 {
+ff035b a0 00              ldy #$0
+ff035d                  FORff035b_loop:
+ff035d b9 00 02           lda $0200,Y
+ff0360 4f d1 00           cmp.a24 ($00),Y
+ff0363                   ; IF != {
+ff0363 f0 04              beq +4 [ff0369] IFff0363_end
+ff0365 a9 00              lda #$0
+ff0367 4f 60              rts.a24
+ff0369                  IFff0363_end:
+ff0369                   ; IF == 0 {
+ff0369 c9 00              cmp #$0
+ff036b d0 0f              bne +15 [ff037c] IFff0369_end
+ff036d 4f b1 00           lda.a24 ($00),Y
+ff0370                   ; IF == 0 {
+ff0370 c9 00              cmp #$0
+ff0372 d0 04              bne +4 [ff0378] IFff0370_end
+ff0374 a9 ff              lda #$ff
+ff0376 4f 60              rts.a24
+ff0378                  IFff0370_end:
+ff0378 a9 00              lda #$0
+ff037a 4f 60              rts.a24
+ff037c                  IFff0369_end:
+ff037c c8                 iny
+ff037d c9 27              cmp #$27
+ff037f d0 dc              bne -36 [ff035d] FORff035b_loop
+ff0381                  FORff035b_end:
+ff0381 a9 00              lda #$0
+ff0383 4f 60              rts.a24
 
-ff0380 ; SUB DoClear:
-ff0380 a2 02              ldx #$2
-ff0382 4f 20 78 04 ff     jsr.a24 $ff0478
-ff0387 a9 02              lda #$2
-ff0389 8d ff 03           sta $03ff
-ff038c a9 00              lda #$0
-ff038e 8d fe 03           sta $03fe
-ff0391 4f 60              rts.a24
+ff0385 ; SUB DoClear:
+ff0385 a2 02              ldx #$2
+ff0387 4f 20 7d 04 ff     jsr.a24 $ff047d
+ff038c a9 02              lda #$2
+ff038e 8d ff 03           sta $03ff
+ff0391 a9 00              lda #$0
+ff0393 8d fe 03           sta $03fe
+ff0396 4f 60              rts.a24
 
-ff0393 ; SUB DoMemory:
-ff0393 4f 20 94 04 ff     jsr.a24 $ff0494
-ff0398 a9 00              lda #$0
-ff039a 4f 20 c5 03 ff     jsr.a24 $ff03c5
-ff039f a9 ad              lda #$ad
-ff03a1 4f 20 08 04 ff     jsr.a24 $ff0408
-ff03a6 4f 20 12 04 ff     jsr.a24 $ff0412
-ff03ab a2 00              ldx #$0
-ff03ad                  loop_memory:
-ff03ad b5 00              lda $00,X
-ff03af 4f 20 c5 03 ff     jsr.a24 $ff03c5
-ff03b4 4f 20 12 04 ff     jsr.a24 $ff0412
-ff03b9 e8                 inx
-ff03ba e0 08              cpx #$8
-ff03bc d0 ef              bne -17 [ff03ad] loop_memory
-ff03be 4f 20 94 04 ff     jsr.a24 $ff0494
-ff03c3 4f 60              rts.a24
+ff0398 ; SUB DoMemory:
+ff0398 4f 20 99 04 ff     jsr.a24 $ff0499
+ff039d a9 00              lda #$0
+ff039f 4f 20 ca 03 ff     jsr.a24 $ff03ca
+ff03a4 a9 ad              lda #$ad
+ff03a6 4f 20 0d 04 ff     jsr.a24 $ff040d
+ff03ab 4f 20 17 04 ff     jsr.a24 $ff0417
+ff03b0 a2 00              ldx #$0
+ff03b2                  loop_memory:
+ff03b2 b5 00              lda $00,X
+ff03b4 4f 20 ca 03 ff     jsr.a24 $ff03ca
+ff03b9 4f 20 17 04 ff     jsr.a24 $ff0417
+ff03be e8                 inx
+ff03bf e0 08              cpx #$8
+ff03c1 d0 ef              bne -17 [ff03b2] loop_memory
+ff03c3 4f 20 99 04 ff     jsr.a24 $ff0499
+ff03c8 4f 60              rts.a24
 
-ff03c5 ; SUB PrintHexByte:
-ff03c5 48                 pha
-ff03c6 4a                 lsr
-ff03c7 4a                 lsr
-ff03c8 4a                 lsr
-ff03c9 4a                 lsr
-ff03ca 4f 20 d9 03 ff     jsr.a24 $ff03d9
-ff03cf 68                 pla
-ff03d0 29 0f              and #$f
-ff03d2 4f 20 d9 03 ff     jsr.a24 $ff03d9
-ff03d7 4f 60              rts.a24
+ff03ca ; SUB PrintHexByte:
+ff03ca 48                 pha
+ff03cb 4a                 lsr
+ff03cc 4a                 lsr
+ff03cd 4a                 lsr
+ff03ce 4a                 lsr
+ff03cf 4f 20 de 03 ff     jsr.a24 $ff03de
+ff03d4 68                 pla
+ff03d5 29 0f              and #$f
+ff03d7 4f 20 de 03 ff     jsr.a24 $ff03de
+ff03dc 4f 60              rts.a24
 
-ff03d9 ; SUB PrintHexDigit:
-ff03d9 c9 0a              cmp #$a
-ff03db 90 05              bcc +5 [ff03e2] print_hex_digit_09
-ff03dd 18                 clc
-ff03de 69 b7              adc #$b7
-ff03e0 80 02              bra +2 [ff03e4] print_hex_digit
-ff03e2                  print_hex_digit_09:
-ff03e2 69 b0              adc #$b0
-ff03e4                  print_hex_digit:
-ff03e4 ac fe 03           ldy $03fe
-ff03e7 91 fe              sta ($fe),Y
-ff03e9 ee fe 03           inc $03fe
-ff03ec 4f 60              rts.a24
+ff03de ; SUB PrintHexDigit:
+ff03de c9 0a              cmp #$a
+ff03e0 90 05              bcc +5 [ff03e7] print_hex_digit_09
+ff03e2 18                 clc
+ff03e3 69 b7              adc #$b7
+ff03e5 80 02              bra +2 [ff03e9] print_hex_digit
+ff03e7                  print_hex_digit_09:
+ff03e7 69 b0              adc #$b0
+ff03e9                  print_hex_digit:
+ff03e9 ac fe 03           ldy $03fe
+ff03ec 91 fe              sta ($fe),Y
+ff03ee ee fe 03           inc $03fe
+ff03f1 4f 60              rts.a24
 
-ff03ee ; SUB PrintString:
-ff03ee                  FORff03ee_start:
-ff03ee                   ; FOR y = 0 TO 255 {
-ff03ee a0 00              ldy #$0
-ff03f0                  FORff03ee_loop:
-ff03f0 2f b1 00           lda.t ($00),Y
-ff03f3 f0 11              beq +17 [ff0406] forff03ee_end
-ff03f5 84 02              sty $02
-ff03f7 ac fe 03           ldy $03fe
-ff03fa 91 fe              sta ($fe),Y
-ff03fc ee fe 03           inc $03fe
-ff03ff a4 02              ldy $02
-ff0401 c8                 iny
-ff0402 c9 ff              cmp #$ff
-ff0404 d0 ea              bne -22 [ff03f0] FORff03ee_loop
-ff0406                  FORff03ee_end:
-ff0406 4f 60              rts.a24
+ff03f3 ; SUB PrintString:
+ff03f3                  FORff03f3_start:
+ff03f3                   ; FOR y = 0 TO 255 {
+ff03f3 a0 00              ldy #$0
+ff03f5                  FORff03f3_loop:
+ff03f5 2f b1 00           lda.t ($00),Y
+ff03f8 f0 11              beq +17 [ff040b] forff03f3_end
+ff03fa 84 02              sty $02
+ff03fc ac fe 03           ldy $03fe
+ff03ff 91 fe              sta ($fe),Y
+ff0401 ee fe 03           inc $03fe
+ff0404 a4 02              ldy $02
+ff0406 c8                 iny
+ff0407 c9 ff              cmp #$ff
+ff0409 d0 ea              bne -22 [ff03f5] FORff03f3_loop
+ff040b                  FORff03f3_end:
+ff040b 4f 60              rts.a24
 
-ff0408 ; SUB PrintChar:
-ff0408 ac fe 03           ldy $03fe
-ff040b 91 fe              sta ($fe),Y
-ff040d ee fe 03           inc $03fe
-ff0410 4f 60              rts.a24
+ff040d ; SUB PrintChar:
+ff040d ac fe 03           ldy $03fe
+ff0410 91 fe              sta ($fe),Y
+ff0412 ee fe 03           inc $03fe
+ff0415 4f 60              rts.a24
 
-ff0412 ; SUB PrintSpace:
-ff0412 a9 a0              lda #$a0
-ff0414 ac fe 03           ldy $03fe
-ff0417 91 fe              sta ($fe),Y
-ff0419 ee fe 03           inc $03fe
-ff041c 4f 60              rts.a24
+ff0417 ; SUB PrintSpace:
+ff0417 a9 a0              lda #$a0
+ff0419 ac fe 03           ldy $03fe
+ff041c 91 fe              sta ($fe),Y
+ff041e ee fe 03           inc $03fe
+ff0421 4f 60              rts.a24
 
-ff041e ; SUB PrintDebugValue:
-ff041e 48                 pha
-ff041f 48                 pha
-ff0420                   ; A >>= 4 
-ff0420 4a                 lsr
-ff0421 4a                 lsr
-ff0422 4a                 lsr
-ff0423 4a                 lsr
-ff0424                   ; IF >= 10 {
-ff0424 c9 0a              cmp #$a
-ff0426 90 05              bcc +5 [ff042d] IFff0424_else
-ff0428                   ; A += 183 
-ff0428 18                 clc
-ff0429 69 b7              adc #$b7
-ff042b 80 03              bra +3 [ff0430] IFff0424_end
-ff042d                  IFff0424_else:
-ff042d                   ; ELSE
-ff042d                   ; A += 176 
+ff0423 ; SUB PrintDebugValue:
+ff0423 48                 pha
+ff0424 48                 pha
+ff0425                   ; A >>= 4 
+ff0425 4a                 lsr
+ff0426 4a                 lsr
+ff0427 4a                 lsr
+ff0428 4a                 lsr
+ff0429                   ; IF >= 10 {
+ff0429 c9 0a              cmp #$a
+ff042b 90 05              bcc +5 [ff0432] IFff0429_else
+ff042d                   ; A += 183 
 ff042d 18                 clc
-ff042e 69 b0              adc #$b0
-ff0430                  IFff0424_end:
-ff0430 8d 26 04           sta $0426
-ff0433 68                 pla
-ff0434                   ; A &= 15 
-ff0434 29 0f              and #$f
-ff0436                   ; IF >= 10 {
-ff0436 c9 0a              cmp #$a
-ff0438 90 05              bcc +5 [ff043f] IFff0436_else
-ff043a                   ; A += 183 
-ff043a 18                 clc
-ff043b 69 b7              adc #$b7
-ff043d 80 03              bra +3 [ff0442] IFff0436_end
-ff043f                  IFff0436_else:
-ff043f                   ; ELSE
-ff043f                   ; A += 176 
+ff042e 69 b7              adc #$b7
+ff0430 80 03              bra +3 [ff0435] IFff0429_end
+ff0432                  IFff0429_else:
+ff0432                   ; ELSE
+ff0432                   ; A += 176 
+ff0432 18                 clc
+ff0433 69 b0              adc #$b0
+ff0435                  IFff0429_end:
+ff0435 8d 26 04           sta $0426
+ff0438 68                 pla
+ff0439                   ; A &= 15 
+ff0439 29 0f              and #$f
+ff043b                   ; IF >= 10 {
+ff043b c9 0a              cmp #$a
+ff043d 90 05              bcc +5 [ff0444] IFff043b_else
+ff043f                   ; A += 183 
 ff043f 18                 clc
-ff0440 69 b0              adc #$b0
-ff0442                  IFff0436_end:
-ff0442 8d 27 04           sta $0427
-ff0445 68                 pla
-ff0446 4f 60              rts.a24
+ff0440 69 b7              adc #$b7
+ff0442 80 03              bra +3 [ff0447] IFff043b_end
+ff0444                  IFff043b_else:
+ff0444                   ; ELSE
+ff0444                   ; A += 176 
+ff0444 18                 clc
+ff0445 69 b0              adc #$b0
+ff0447                  IFff043b_end:
+ff0447 8d 27 04           sta $0427
+ff044a 68                 pla
+ff044b 4f 60              rts.a24
 
-ff0448 ; SUB PrintDebugChar:
-ff0448 8d 27 04           sta $0427
-ff044b a9 a0              lda #$a0
-ff044d 8d 26 04           sta $0426
-ff0450 4f 60              rts.a24
+ff044d ; SUB PrintDebugChar:
+ff044d 8d 27 04           sta $0427
+ff0450 a9 a0              lda #$a0
+ff0452 8d 26 04           sta $0426
+ff0455 4f 60              rts.a24
 
-ff0452 ; SUB PrintDebug2Chars:
-ff0452 1f 8d 26 04        sta.w $000426
-ff0456 4f 60              rts.a24
+ff0457 ; SUB PrintDebug2Chars:
+ff0457 1f 8d 26 04        sta.w $000426
+ff045b 4f 60              rts.a24
 
-ff0458 ; SUB DoReset:
-ff0458 ea                 nop
-ff0459 4f 4c 00 02 ff     jmp.a24 $ff0200
+ff045d ; SUB DoReset:
+ff045d ea                 nop
+ff045e 4f 4c 00 02 ff     jmp.a24 $ff0200
 
-ff045e ; SUB Do2Plus:
-ff045e fc                 sws
-ff045f a2 ff              ldx #$ff
-ff0461 9a                 txs
-ff0462 a9 00              lda #$0
-ff0464 8d f4 03           sta $03f4
-ff0467 6c fc ff           jmp ($fffc)
+ff0463 ; SUB Do2Plus:
+ff0463 fc                 sws
+ff0464 a2 ff              ldx #$ff
+ff0466 9a                 txs
+ff0467 a9 00              lda #$0
+ff0469 8d f4 03           sta $03f4
+ff046c 6c fc ff           jmp ($fffc)
 
-ff046a ; SUB ScreenBase:
-ff046a                   ; X = M@$3ff 
-ff046a ae ff 03           ldx $03ff
-ff046d 2b                 xsl
-ff046e 5f bd 00 80 ff     lda.w.a24 $ff8000,X
-ff0473 1f 85 fe           sta.w $fe
-ff0476 4f 60              rts.a24
+ff046f ; SUB ScreenBase:
+ff046f                   ; X = M@$3ff 
+ff046f ae ff 03           ldx $03ff
+ff0472 2b                 xsl
+ff0473 5f bd 00 80 ff     lda.w.a24 $ff8000,X
+ff0478 1f 85 fe           sta.w $fe
+ff047b 4f 60              rts.a24
 
-ff0478 ; SUB ClearScreen:
-ff0478 2b                 xsl
-ff0479                  loop_clear_line:
-ff0479 5f bd 00 80 ff     lda.w.a24 $ff8000,X
-ff047e 1f 85 fe           sta.w $fe
-ff0481 a9 a0              lda #$a0
-ff0483 a0 00              ldy #$0
-ff0485                  loop_clear_char:
-ff0485 91 fe              sta ($fe),Y
-ff0487 c8                 iny
-ff0488 c0 28              cpy #$28
-ff048a d0 f9              bne -7 [ff0485] loop_clear_char
-ff048c e8                 inx
-ff048d e8                 inx
-ff048e e0 30              cpx #$30
-ff0490 d0 e7              bne -25 [ff0479] loop_clear_line
-ff0492 4f 60              rts.a24
+ff047d ; SUB ClearScreen:
+ff047d 2b                 xsl
+ff047e                  loop_clear_line:
+ff047e 5f bd 00 80 ff     lda.w.a24 $ff8000,X
+ff0483 1f 85 fe           sta.w $fe
+ff0486 a9 a0              lda #$a0
+ff0488 a0 00              ldy #$0
+ff048a                  loop_clear_char:
+ff048a 91 fe              sta ($fe),Y
+ff048c c8                 iny
+ff048d c0 28              cpy #$28
+ff048f d0 f9              bne -7 [ff048a] loop_clear_char
+ff0491 e8                 inx
+ff0492 e8                 inx
+ff0493 e0 30              cpx #$30
+ff0495 d0 e7              bne -25 [ff047e] loop_clear_line
+ff0497 4f 60              rts.a24
 
-ff0494 ; SUB NextLine:
-ff0494 ad ff 03           lda $03ff
-ff0497 c9 17              cmp #$17
-ff0499 f0 0f              beq +15 [ff04aa] next_line_scroll
-ff049b                  next_line_next_row:
-ff049b ee ff 03           inc $03ff
-ff049e 4f 20 6a 04 ff     jsr.a24 $ff046a
-ff04a3 a9 00              lda #$0
-ff04a5 8d fe 03           sta $03fe
-ff04a8 4f 60              rts.a24
-ff04aa                  next_line_scroll:
-ff04aa a2 02              ldx #$2
-ff04ac 4f 20 bd 04 ff     jsr.a24 $ff04bd
-ff04b1 a9 17              lda #$17
-ff04b3 8d ff 03           sta $03ff
-ff04b6 a9 00              lda #$0
-ff04b8 8d fe 03           sta $03fe
-ff04bb 4f 60              rts.a24
+ff0499 ; SUB NextLine:
+ff0499 ad ff 03           lda $03ff
+ff049c c9 17              cmp #$17
+ff049e f0 0f              beq +15 [ff04af] next_line_scroll
+ff04a0                  next_line_next_row:
+ff04a0 ee ff 03           inc $03ff
+ff04a3 4f 20 6f 04 ff     jsr.a24 $ff046f
+ff04a8 a9 00              lda #$0
+ff04aa 8d fe 03           sta $03fe
+ff04ad 4f 60              rts.a24
+ff04af                  next_line_scroll:
+ff04af a2 02              ldx #$2
+ff04b1 4f 20 c2 04 ff     jsr.a24 $ff04c2
+ff04b6 a9 17              lda #$17
+ff04b8 8d ff 03           sta $03ff
+ff04bb a9 00              lda #$0
+ff04bd 8d fe 03           sta $03fe
+ff04c0 4f 60              rts.a24
 
-ff04bd ; SUB ScrollScreen:
-ff04bd 2b                 xsl
-ff04be                  loop_scroll_line:
-ff04be 5f bd 00 80 ff     lda.w.a24 $ff8000,X
-ff04c3 1f 85 fe           sta.w $fe
-ff04c6 5f bd 02 80 ff     lda.w.a24 $ff8002,X
-ff04cb 1f 85 00           sta.w $00
-ff04ce a0 00              ldy #$0
-ff04d0                  loop_scroll_char:
-ff04d0 b1 00              lda ($00),Y
-ff04d2 91 fe              sta ($fe),Y
-ff04d4 c8                 iny
-ff04d5 c0 28              cpy #$28
-ff04d7 d0 f7              bne -9 [ff04d0] loop_scroll_char
-ff04d9 e8                 inx
-ff04da e8                 inx
-ff04db e0 2e              cpx #$2e
-ff04dd d0 df              bne -33 [ff04be] loop_scroll_line
-ff04df                  scroll_clear_last_line:
-ff04df 5f bd 00 80 ff     lda.w.a24 $ff8000,X
-ff04e4 1f 85 fe           sta.w $fe
-ff04e7 1f a9 a0 a0        lda.w #$a0a0
-ff04eb a0 00              ldy #$0
-ff04ed                  loop_scroll_clear_line:
-ff04ed 1f 91 fe           sta.w ($fe),Y
-ff04f0 c8                 iny
-ff04f1 c8                 iny
-ff04f2 c0 28              cpy #$28
-ff04f4 d0 f7              bne -9 [ff04ed] loop_scroll_clear_line
-ff04f6                  done_with_scroll:
-ff04f6 4f 60              rts.a24
+ff04c2 ; SUB ScrollScreen:
+ff04c2 2b                 xsl
+ff04c3                  loop_scroll_line:
+ff04c3 5f bd 00 80 ff     lda.w.a24 $ff8000,X
+ff04c8 1f 85 fe           sta.w $fe
+ff04cb 5f bd 02 80 ff     lda.w.a24 $ff8002,X
+ff04d0 1f 85 00           sta.w $00
+ff04d3 a0 00              ldy #$0
+ff04d5                  loop_scroll_char:
+ff04d5 b1 00              lda ($00),Y
+ff04d7 91 fe              sta ($fe),Y
+ff04d9 c8                 iny
+ff04da c0 28              cpy #$28
+ff04dc d0 f7              bne -9 [ff04d5] loop_scroll_char
+ff04de e8                 inx
+ff04df e8                 inx
+ff04e0 e0 2e              cpx #$2e
+ff04e2 d0 df              bne -33 [ff04c3] loop_scroll_line
+ff04e4                  scroll_clear_last_line:
+ff04e4 5f bd 00 80 ff     lda.w.a24 $ff8000,X
+ff04e9 1f 85 fe           sta.w $fe
+ff04ec 1f a9 a0 a0        lda.w #$a0a0
+ff04f0 a0 00              ldy #$0
+ff04f2                  loop_scroll_clear_line:
+ff04f2 1f 91 fe           sta.w ($fe),Y
+ff04f5 c8                 iny
+ff04f6 c8                 iny
+ff04f7 c0 28              cpy #$28
+ff04f9 d0 f7              bne -9 [ff04f2] loop_scroll_clear_line
+ff04fb                  done_with_scroll:
+ff04fb 4f 60              rts.a24
 
-ff04f8 ; SUB ClearInputBuffer:
-ff04f8 a9 00              lda #$0
-ff04fa a2 ff              ldx #$ff
-ff04fc                  loop_clear_buffer:
-ff04fc 9d 00 02           sta $0200,X
-ff04ff ca                 dex
-ff0500 d0 fa              bne -6 [ff04fc] loop_clear_buffer
-ff0502 8d 00 02           sta $0200
-ff0505 4f 60              rts.a24
+ff04fd ; SUB ClearInputBuffer:
+ff04fd a9 00              lda #$0
+ff04ff a2 ff              ldx #$ff
+ff0501                  loop_clear_buffer:
+ff0501 9d 00 02           sta $0200,X
+ff0504 ca                 dex
+ff0505 d0 fa              bne -6 [ff0501] loop_clear_buffer
+ff0507 8d 00 02           sta $0200
+ff050a 4f 60              rts.a24
 
-ff0507 ; SUB DoC081:
-ff0507 ad 81 c0           lda $c081
-ff050a ad 81 c0           lda $c081
-ff050d 4f 20 94 04 ff     jsr.a24 $ff0494
-ff0512 a9 aa              lda #$aa
-ff0514 8d 00 e0           sta $e000
-ff0517 a9 e0              lda #$e0
-ff0519 4f 20 c5 03 ff     jsr.a24 $ff03c5
-ff051e a9 00              lda #$0
-ff0520 4f 20 c5 03 ff     jsr.a24 $ff03c5
-ff0525 a9 ad              lda #$ad
-ff0527 4f 20 08 04 ff     jsr.a24 $ff0408
-ff052c 4f 20 12 04 ff     jsr.a24 $ff0412
-ff0531 a2 00              ldx #$0
-ff0533                  loop_c081:
-ff0533 bd 00 e0           lda $e000,X
-ff0536 4f 20 c5 03 ff     jsr.a24 $ff03c5
-ff053b 4f 20 12 04 ff     jsr.a24 $ff0412
-ff0540 e8                 inx
-ff0541 e0 08              cpx #$8
-ff0543 d0 ee              bne -18 [ff0533] loop_c081
-ff0545 4f 20 94 04 ff     jsr.a24 $ff0494
-ff054a 4f 60              rts.a24
+ff050c ; SUB DoC081:
+ff050c ad 81 c0           lda $c081
+ff050f ad 81 c0           lda $c081
+ff0512 4f 20 99 04 ff     jsr.a24 $ff0499
+ff0517 a9 aa              lda #$aa
+ff0519 8d 00 e0           sta $e000
+ff051c a9 e0              lda #$e0
+ff051e 4f 20 ca 03 ff     jsr.a24 $ff03ca
+ff0523 a9 00              lda #$0
+ff0525 4f 20 ca 03 ff     jsr.a24 $ff03ca
+ff052a a9 ad              lda #$ad
+ff052c 4f 20 0d 04 ff     jsr.a24 $ff040d
+ff0531 4f 20 17 04 ff     jsr.a24 $ff0417
+ff0536 a2 00              ldx #$0
+ff0538                  loop_c081:
+ff0538 bd 00 e0           lda $e000,X
+ff053b 4f 20 ca 03 ff     jsr.a24 $ff03ca
+ff0540 4f 20 17 04 ff     jsr.a24 $ff0417
+ff0545 e8                 inx
+ff0546 e0 08              cpx #$8
+ff0548 d0 ee              bne -18 [ff0538] loop_c081
+ff054a 4f 20 99 04 ff     jsr.a24 $ff0499
+ff054f 4f 60              rts.a24
 
-ff054c ; SUB DoC083:
-ff054c ad 83 c0           lda $c083
-ff054f ad 83 c0           lda $c083
-ff0552 4f 20 94 04 ff     jsr.a24 $ff0494
-ff0557 ad fe 03           lda $03fe
-ff055a 8d 00 e0           sta $e000
-ff055d a5 04              lda $04
-ff055f 8d 01 e0           sta $e001
-ff0562 a9 e0              lda #$e0
-ff0564 4f 20 c5 03 ff     jsr.a24 $ff03c5
-ff0569 a9 00              lda #$0
-ff056b 4f 20 c5 03 ff     jsr.a24 $ff03c5
-ff0570 a9 ad              lda #$ad
-ff0572 4f 20 08 04 ff     jsr.a24 $ff0408
-ff0577 4f 20 12 04 ff     jsr.a24 $ff0412
-ff057c a2 00              ldx #$0
-ff057e                  loop_c083:
-ff057e bd 00 e0           lda $e000,X
-ff0581 4f 20 c5 03 ff     jsr.a24 $ff03c5
-ff0586 4f 20 12 04 ff     jsr.a24 $ff0412
-ff058b e8                 inx
-ff058c e0 08              cpx #$8
-ff058e d0 ee              bne -18 [ff057e] loop_c083
-ff0590 4f 20 94 04 ff     jsr.a24 $ff0494
-ff0595 4f 60              rts.a24
+ff0551 ; SUB DoC083:
+ff0551 ad 83 c0           lda $c083
+ff0554 ad 83 c0           lda $c083
+ff0557 4f 20 99 04 ff     jsr.a24 $ff0499
+ff055c ad fe 03           lda $03fe
+ff055f 8d 00 e0           sta $e000
+ff0562 a5 04              lda $04
+ff0564 8d 01 e0           sta $e001
+ff0567 a9 e0              lda #$e0
+ff0569 4f 20 ca 03 ff     jsr.a24 $ff03ca
+ff056e a9 00              lda #$0
+ff0570 4f 20 ca 03 ff     jsr.a24 $ff03ca
+ff0575 a9 ad              lda #$ad
+ff0577 4f 20 0d 04 ff     jsr.a24 $ff040d
+ff057c 4f 20 17 04 ff     jsr.a24 $ff0417
+ff0581 a2 00              ldx #$0
+ff0583                  loop_c083:
+ff0583 bd 00 e0           lda $e000,X
+ff0586 4f 20 ca 03 ff     jsr.a24 $ff03ca
+ff058b 4f 20 17 04 ff     jsr.a24 $ff0417
+ff0590 e8                 inx
+ff0591 e0 08              cpx #$8
+ff0593 d0 ee              bne -18 [ff0583] loop_c083
+ff0595 4f 20 99 04 ff     jsr.a24 $ff0499
+ff059a 4f 60              rts.a24
 
-; 31337 BYTES of FILLER
+; 31332 BYTES of FILLER
 
 ff8000 ; DATA TextScreenBase:
 ff8000 00 04
