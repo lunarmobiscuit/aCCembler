@@ -844,6 +844,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.hasValue = true
 		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
+			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
 				args.value = value
@@ -855,7 +856,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 					args.size |= size
 					args.hasValue = true
 				} else {
-					args.symbol = strings.ToLower(symbol)
+					args.symbol = symbol
 					args.hasValue = false
 				}
 			}
@@ -887,6 +888,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		if (p.peekChar() == '@') {
 			p.skip(1)
 			symbol := p.nextAZ_az_09()
+			args.symbol = symbol
 			address, size, err := p.lookupVariable(p.currentCode, symbol)
 			if (err != nil) {
 				return args, fmt.Errorf("unknown variable '%s'", symbol)
@@ -896,12 +898,13 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.hasValue = true
 		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
+			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				args.symbol = strings.ToLower(symbol)
+				args.symbol = symbol
 				args.hasValue = false
 			}
 		} else {
@@ -967,6 +970,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		if (p.peekChar() == '@') {
 			p.skip(1)
 			symbol := p.nextAZ_az_09()
+			args.symbol = symbol
 			address, size, err := p.lookupVariable(p.currentCode, symbol)
 			if (err != nil) {
 				return args, fmt.Errorf("unknown variable '%s'", symbol)
@@ -976,17 +980,18 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.hasValue = true
 		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
+			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				args.symbol = strings.ToLower(symbol)
+				args.symbol = symbol
 				args.hasValue = false
 
 				// keyword "break" meaning 'goto end of the current block'
-				if (args.symbol == "break") {
-					args.symbol = strings.ToLower(p.currentCode.name + "_end")
+				if (strings.ToLower(symbol) == "break") {
+					args.symbol = p.currentCode.name + "_end"
 				}
 
 				// optional +offset (or -offset) to the specified label

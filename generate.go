@@ -39,7 +39,10 @@ func (p *parser) generateCode(out *os.File, listing *os.File) error {
 func (p *parser) resolveSymbols() error {
 	// Loop through all the code blocks
 	for b := p.code; b != nil; b = b.next {
-		p.resolveCodeSymbols(b)
+		err := p.resolveCodeSymbols(b)
+		if (err != nil) {
+			return err
+		}
 	}
 
 	return nil
@@ -107,6 +110,8 @@ func (p *parser) resolveCodeSymbols(b *codeBlock) error {
 					if (d != nil) {
 						i.hasValue = true
 						i.value = d.startAddr + i.value
+					} else {
+						return fmt.Errorf("*** %s is an unknown symbol", i.symbol)
 					}
 				}
 			}
@@ -315,16 +320,16 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 		// IF/FOR/DO/ETC
 		if (i.subBlock != nil) {
 			c := i.comment
-			line += fmt.Sprintf("                  ; %s", c.comment)
+			line += fmt.Sprintf("                                ;; %s", c.comment)
 		// Comments
 		} else if (i.comment != nil) {
 			c := i.comment
-			line += fmt.Sprintf("                  ; %s", c.comment)
+			line += fmt.Sprintf("                                ;; %s", c.comment)
 		// Expression
 		} else if (i.expr != nil) {
 			// Format the expression
 			e := i.expr
-			line += "                  ; "
+			line += "                      ;; "
 			switch (e.dest.location) {
 			case MEMORY: line += fmt.Sprintf("M@$%0x", e.dest.addrval)
 			case VARIABLE: line += fmt.Sprintf("V@$%0x", e.dest.addrval)
@@ -380,7 +385,7 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 			continue
 		} else if (i.mnemonic == 0) {
 		// Label
-			line += fmt.Sprintf("                 %s:\n", i.symbol)
+			line += fmt.Sprintf("                %s:\n", i.symbol)
 
 			listing.WriteString(line)
 			fmt.Printf(line)
@@ -389,38 +394,38 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 		// Mnemonic
 			// Prefix code
 			opcodes := ""
-			len := i.len
+			length := i.len
 			if (i.prefix > A16) {
 				opcodes += fmt.Sprintf("%02x ", i.prefix)
 				bytes[byteIdx] = byte(i.prefix & 0xff); byteIdx += 1;
-				len -= 1
+				length -= 1
 			}
 			// Machine opcode
 			opcodes += fmt.Sprintf("%02x ", i.opcode)
 			bytes[byteIdx] = byte(i.opcode & 0xff); byteIdx += 1;
-			len -= 1
+			length -= 1
 
 			// Value
-			if len > 3 {
+			if length > 3 {
 				return fmt.Errorf("*** the length for %s is %d, too long", mnemonics[i.mnemonic].name, i.len)
-			} else if len >= 3 {
+			} else if length >= 3 {
 				opcodes += fmt.Sprintf("%02x %02x %02x ",
 					i.value & 0xff, (i.value >> 8) & 0xff, (i.value >> 16) & 0xff)
 				bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
 				bytes[byteIdx] = byte((i.value >> 8) & 0xff); byteIdx += 1;
 				bytes[byteIdx] = byte((i.value >> 16) & 0xff); byteIdx += 1;
-			} else if len == 2 {
+			} else if length == 2 {
 				opcodes += fmt.Sprintf("%02x %02x ", i.value & 0xff, (i.value >> 8) & 0xff)
 				bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
 				bytes[byteIdx] = byte((i.value >> 8) & 0xff); byteIdx += 1;
-			} else if len == 1 {
+			} else if length == 1 {
 				opcodes += fmt.Sprintf("%02x ", i.value & 0xff)
 				bytes[byteIdx] = byte(i.value & 0xff); byteIdx += 1;
 			}
 
 			// Assembly code mneumonic
-			spaces := "                    "
-			line += fmt.Sprintf("%s%s %s", opcodes, spaces[:18-(i.len*3)], mnemonics[i.mnemonic].name)
+			spaces := "                                        "
+			line += fmt.Sprintf("%s%s %s", opcodes, spaces[:35-(i.len*3)], mnemonics[i.mnemonic].name)
 
 			// Suffix
 			line += sizeToSuffix(i.prefix)
@@ -440,9 +445,9 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 				args += fmt.Sprintf(" $%02x,Y", i.value)
 			case modeRelative:
 				if (i.value < 0) {
-					args += fmt.Sprintf(" %d [%x] %s", i.value, i.address + i.len + i.value, i.symbol)
+					args += fmt.Sprintf(" %d", i.value,)
 				} else {
-					args += fmt.Sprintf(" +%d [%x] %s", i.value, i.address + i.len + i.value, i.symbol)
+					args += fmt.Sprintf(" +%d", i.value)
 				}
 			case modeAbsolute:
 				if (i.prefix == A16) {
@@ -482,6 +487,17 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 				}
 			}
 			line += args
+
+			// Append a comment if the original code referenced a symbol
+			if (i.symbol != "") {
+				spaces := "                                        "
+				line += fmt.Sprintf("%s", spaces[:65-len(line)])
+				line += fmt.Sprintf("; %s", i.symbol)
+			}
+			// Append the computed address for relative branches
+			if (i.addressMode == modeRelative) {
+				line += fmt.Sprintf(" [%x]", i.address + i.len + i.value)
+			}
 		}
 
 		line += "\n"
