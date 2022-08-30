@@ -5,25 +5,27 @@
  *
  */
 
-const KBD         = $c000		// R last key pressed + 128
-const KBDSTRB     = $c010		// RW keyboard strobe
-const TAPEOUT     = $c020		// RW toggle caseette tape output
-const SPKR        = $c030		// RW toggle speaker
-const TXTCLR      = $c050		// RW display graphics
-const TXTSET      = $c051		// RW display text
-const MIXSET      = $c053		// RW display split screen
-const TXTPAGE1    = $c054		// RW display page 1
-const LORES       = $c056		// RW display lo-res graphics
-const SETAN0      = $c058		// RW annunciator 0 off
-const SETAN1      = $c05a		// RW annunciator 1 off
-const CLRAN2      = $c05d		// RW annunciator 2 on
-const CLRAN3      = $c05f		// RW annunciator 3 on
-const TAPEIN      = $c060		// R cassete tape input
-const PADDL0      = $c064		// R analog input 0
-const PTRIG       = $c070		// RW analog input reset
-const CLRROM      = $cfff		// disable slot C8 ROM
-const RSTVECTOR   = $fffc  	// Apple ][ 6502 reset vector
-const PWREDUP     = $03f4  	// Apple ][ stores #$A5 to make RST a soft reboot
+const KBD			= $c000		// R last key pressed + 128
+const KBDSTRB		= $c010		// RW keyboard strobe
+const TAPEOUT		= $c020		// RW toggle caseette tape output
+const SPKR			= $c030		// RW toggle speaker
+const TXTCLR		= $c050		// RW display graphics
+const TXTSET		= $c051		// RW display text
+const MIXSET		= $c053		// RW display split screen
+const TXTPAGE1		= $c054		// RW display page 1
+const LORES			= $c056		// RW display lo-res graphics
+const SETAN0		= $c058		// RW annunciator 0 off
+const SETAN1		= $c05a		// RW annunciator 1 off
+const CLRAN2		= $c05d		// RW annunciator 2 on
+const CLRAN3		= $c05f		// RW annunciator 3 on
+const TAPEIN		= $c060		// R cassete tape input
+const PADDL0		= $c064		// R analog input 0
+const PTRIG			= $c070		// RW analog input reset
+const CLRROM		= $cfff		// disable slot C8 ROM
+const RSTVECTOR		= $fffc  	// Apple ][ 6502 reset vector
+const PWREDUP		= $03f4  	// Apple ][ stores #$A5 to make RST a soft reboot
+
+const MAX_COMMAND	= 5			// N_COMMANDS - 1 (@@@ TBD ADD +n/-n after lookupConstants)
 
 global TXTPTR 		= @$FE.a16	// $FE-$FF is the address of the current line of text
 global TXTROW 		= @$3FF			// $3FF is the current row on the text screen
@@ -34,12 +36,10 @@ global ARG0				= @$00
 
 /*
  *  The code begins with a JMPs to the OS functions
- *  (TBD: change all but the first JMP to a table of vectors and add JSR ($aaaa) address mode)
+ *  followed by a table of addresses for JSR ($aaaa) indirect calls
  */
 sub Start @$FF0000 {
 	jmp Reset
-	jmp ClearScreen
-	jmp ScrollScreen
 }
 
 /*
@@ -64,20 +64,7 @@ sub Reset @$FF0200 {
 	sta @TXTROW					; Start at TEXT row 2
 	lda #0
 	sta @TXTPOS					; Start at TEXT position 0
-	jmp EchoKeys				; loop forever reading commands
-}
-
-/*
- *  Print Apple ][4 at the top of the screen
- */
-sub AppleII4 {
-  FOR X = 0 TO 255 {
-		lda Hello,x
-		beq +BREAK
-		ora #$80
-		sta $400,x
-	}
-	RETURN
+	; drop through to EchoKeys
 }
 
 /*
@@ -138,7 +125,7 @@ sub EchoKeys {
 				and #$7F				; store (low) ASCII in TEXT buffer
 				dey 					; Y-1 as TEXT position starts at 1, making space for the prompt
 				sta @TXTBUFFER,y
-				lda #$DF			; '_' | 0x80
+				lda #$DF				; '_' | 0x80
 				jsr PrintCursor
 			}
 		}
@@ -146,62 +133,34 @@ sub EchoKeys {
 }
 
 /*
- *  DEBUGGING
- */
-data ShouldNotGetHere byte { $FE, $DB }
-
-/*
  *  Lookup and execute the typed command
  */
 sub CommandLine {
-  lda.t #CMD_Clear
-  sta.t @ARG0
-	jsr CompareText
-	IF != {
-		jsr DoClear
-		RETURN
-	}
+	var I	= @$04						; loop variable
+	var I6	= @$05						; I * 6
 
-  lda.t #CMD_Memory
-  sta.t @ARG0
-	jsr CompareText
-	IF != {
-		jsr DoMemory
-		RETURN
-	}
+	FOR @I = 0 TO MAX_COMMAND {
+		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
+		A <<= 2
+		sta @I6
+		lda @I
+		A <<= 1
+		clc
+		adc @I6
+		sta @I6
+		tax
 
-  lda.t #CMD_Reset
-  sta.t @ARG0
-	jsr CompareText
-	IF != {
-		jsr DoReset
-		RETURN
+  		lda.t CommandList,X				; CommandList[X].string
+  		sta.t @ARG0
+		jsr CompareText
+		IF - {
+			ldx @I6
+	  		lda.t CommandList+3,X		; CommandList[X].func
+	  		sta.t @ARG0
+			jsr.a24 (@ARG0)
+			RETURN
+		}
 	}
-
-  lda.t #CMD_2Plus
-  sta.t @ARG0
-	jsr CompareText
-	IF != {
-		jsr Do2Plus
-		RETURN
-	}
-
-  lda.t #CMD_C081
-  sta.t @ARG0
-	jsr CompareText
-	IF != {
-		jsr DoC081
-		RETURN
-	}
-
-  lda.t #CMD_C083
-  sta.t @ARG0
-	jsr CompareText
-	IF != {
-		jsr DoC083
-		RETURN
-	}
-
 	RETURN
 }
 
@@ -586,6 +545,32 @@ sub DoC083 {
 
 
 /*
+ *  Print Apple ][4 at the top of the screen
+ */
+sub AppleII4 {
+  FOR X = 0 TO 255 {
+		lda Hello,x
+		beq +BREAK
+		ora #$80
+		sta $400,x
+	}
+	RETURN
+}
+
+
+/*
+ *  The ROM vector table
+ */
+data ROMVectors @$FF0005 u24 {
+	ClearScreen
+	NextLine
+	ScrollScreen
+	PrintChar
+	PrintString
+	AppleII4
+}
+
+/*
  *  The addresses of the 24 TEXT rows
  */
 data TextScreenBase @$FF8000 word {
@@ -612,14 +597,14 @@ data CMD_2Plus string { "2+" }
 data CMD_C081 string { "c081" }
 data CMD_C083 string { "c083" }
 
-data CommandListLength byte { 6 }
 data CommandList u24 {
-	CMD_Clear
-	CMD_Memory
-	CMD_Reset
-	CMD_2Plus
-	CMD_C081
-	CMD_C083
+	CMD_Clear, DoClear
+	CMD_Memory, DoMemory
+	CMD_Reset, DoReset
+	CMD_2Plus, Do2Plus
+	CMD_C081, DoC081
+	CMD_C083, DoC083
+	CMD_Memory, DoMemory
 }
 
 /*

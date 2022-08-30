@@ -276,9 +276,51 @@ func (p *parser) parseFor(token string) error {
 	sub.startAddr = p.currentCode.endAddr
 	sub.endAddr = sub.startAddr
 
-	v := strings.ToLower(p.nextAZ_az_09())
-	if (v == "") {
-		return fmt.Errorf("missing loop variable in FOR")
+	var err error
+	var forAddress int
+	var forAddressMode int
+	var forRegister string
+	forIsMemory := false
+	forIsRegister := false
+	var forMRegStr string
+	forSz := R08
+	p.skipWhitespace()
+	sym1 := p.peekChar()
+	sym2 := p.peekAhead(1)
+	if ((sym1 == 'M') || (sym1 == 'm')) && (sym2 == '@') {
+		p.skip(2)
+		forAddress, err = p.parseMemoryAddress()
+		if (err != nil) {
+			return err
+		}
+		if (forAddress <= 0xff) { forAddressMode = modeZeroPage } else { forAddressMode = modeAbsolute }
+		forIsMemory = true
+		forMRegStr = fmt.Sprintf("M$%x", forAddress)
+		forSz = p.parseOpWidth()
+	} else if (sym1 == '@') {
+		p.skip(1)
+		symbol := p.nextAZ_az_09()
+		forAddress, forSz, err = p.lookupVariable(p.lastCode, symbol)
+		if (err != nil) {
+			return fmt.Errorf("variable '@%s' not found", symbol)
+		}
+		if (forAddress <= 0xff) { forAddressMode = modeZeroPage } else { forAddressMode = modeAbsolute }
+		forIsMemory = true
+		forMRegStr = fmt.Sprintf("@%s", symbol)
+	} else if (sym1 == 'A') {
+		return fmt.Errorf("you can't iterate a FOR loop on register A")
+	} else if (sym1 == 'X') {
+		p.skip(1)
+		forRegister = "X"
+		forIsRegister = true
+		forMRegStr = "X"
+		forSz = p.parseOpWidth()
+	} else if (sym1 == 'Y') {
+		p.skip(1)
+		forRegister = "Y"
+		forIsRegister = true
+		forMRegStr = "Y"
+		forSz = p.parseOpWidth()
 	}
 
 	p.skipWhitespace()
@@ -286,9 +328,27 @@ func (p *parser) parseFor(token string) error {
 		return fmt.Errorf("missing = in FOR")
 	}
 
-	start, err := p.nextValue()
-	if (err != nil) {
-		return fmt.Errorf("invalid starting value in FOR")
+	var start int
+	p.skipWhitespace()
+	sym1 = p.peekChar()
+	sym2 = p.peekAhead(1)
+	if ((sym1 == 'M') || (sym1 == 'm')) && (sym2 == '@') {
+		p.skip(2)
+		start, err = p.parseMemoryAddress()
+		if (err != nil) {
+			return err
+		}
+	} else if p.isNextAZ() {
+		symbol := p.nextAZ_az_09()
+		start, err = p.lookupConstant(symbol)
+		if (err != nil) {
+			return fmt.Errorf("constant '%s' not found", symbol)
+		}
+	} else {
+		start, err = p.nextValue()
+		if (err != nil) {
+			return fmt.Errorf("invalid starting value in FOR")
+		}
 	}
 
 	to := strings.ToUpper(p.nextAZ_az_09())
@@ -303,9 +363,27 @@ func (p *parser) parseFor(token string) error {
 		return fmt.Errorf("syntax error in FOR, missing TO")
 	}
 
-	end, err2 := p.nextValue()
-	if (err2 != nil) {
-		return fmt.Errorf("invalid ending value in FOR")
+	var end int
+	p.skipWhitespace()
+	sym1 = p.peekChar()
+	sym2 = p.peekAhead(1)
+	if ((sym1 == 'M') || (sym1 == 'm')) && (sym2 == '@') {
+		p.skip(2)
+		end, err = p.parseMemoryAddress()
+		if (err != nil) {
+			return err
+		}
+	} else if p.isNextAZ() {
+		symbol := p.nextAZ_az_09()
+		end, err = p.lookupConstant(symbol)
+		if (err != nil) {
+			return fmt.Errorf("constant '%s' not found", symbol)
+		}
+	} else {
+		end, err = p.nextValue()
+		if (err != nil) {
+			return fmt.Errorf("invalid ending value in FOR")
+		}
 	}
 
 	p.skipWhitespace()
@@ -320,7 +398,7 @@ func (p *parser) parseFor(token string) error {
 	// Add the instruction with the sub in the current block (before starting a new block)
 	down := "DOWN "
 	if (sub.upDown == true) { down = "" }
-	comment := fmt.Sprintf("FOR %s = %d %sTO %d {", v, start, down, end)
+	comment := fmt.Sprintf("FOR %s = %d %sTO %d {", forMRegStr, start, down, end)
 	p.addKeywordInstructionAndLabel(sub, comment, name)
 
 	// Add the code for the IF
@@ -334,15 +412,22 @@ func (p *parser) parseFor(token string) error {
 	} else if (start > 0x0FF) || (end > 0x0FF) {
 		loopSz = R16
 	}
+	if (forSz != loopSz) {
+		fmt.Errorf("FOR loop range doesn't match the size of the loop register/varaible/memory")
+	}
 
-	if (v == "a") {
-		fmt.Errorf("Bad form to FOR A, try X or Y or a variable")
-	} else if (v == "x") {
+	// Load the start value of the loop
+	if (forIsMemory) {
 		p.addExprInstruction("ldx", modeImmediate, loopSz, start)
-	} else if (v == "y") {
-		p.addExprInstruction("ldy", modeImmediate, loopSz, start)
-	} else if (v[0:1] == "@") {
-		// @@@ TODO - ADD LOOP VARIABLES
+		p.addExprInstruction("stx", forAddressMode, forSz, forAddress)
+	} else if (forIsRegister) {
+		if (forRegister == "X") {
+			p.addExprInstruction("ldx", modeImmediate, loopSz, start)
+		} else if (forRegister == "Y") {
+			p.addExprInstruction("ldy", modeImmediate, loopSz, start)
+		} else {
+			fmt.Errorf("unknown FOR register %s", forRegister)
+		}
 	}
 	p.addInstructionLabel(name + "_loop")
 
@@ -352,14 +437,24 @@ func (p *parser) parseFor(token string) error {
 		return err
 	}
 
-	if (v == "x") {
-		p.addExprInstruction("inx", modeImplicit, loopSz, 0)
-	} else if (v == "y") {
-		p.addExprInstruction("iny", modeImplicit, loopSz, 0)
-	} else if (v[0:1] == "@") {
-		// @@@ TODO - ADD LOOP VARIABLES
+	// Increment/Decrement the loop count
+	var mmm string
+	if (forIsMemory) {
+		if sub.upDown { mmm = "inc" } else { mmm = "dec"}
+		p.addExprInstruction(mmm, forAddressMode, forSz, forAddress)
+		p.addExprInstruction("ldx", forAddressMode, forSz, forAddress)
+		p.addExprInstruction("cpx", modeImmediate, loopSz, end)
+	} else if (forIsRegister) {
+		if (forRegister == "X") {
+			if sub.upDown { mmm = "inx" } else { mmm = "dex"}
+			p.addExprInstruction(mmm, modeImplicit, loopSz, 0)
+			p.addExprInstruction("cpx", modeImmediate, loopSz, end)
+		} else if (forRegister == "Y") {
+			if sub.upDown { mmm = "iny" } else { mmm = "dey"}
+			p.addExprInstruction(mmm, modeImplicit, loopSz, 0)
+			p.addExprInstruction("cpy", modeImmediate, loopSz, end)
+		}
 	}
-	p.addExprInstruction("cmp", modeImmediate, loopSz, end)
 	p.addExprInstructionWithSymbol("bne", modeRelative, loopSz, 0, name + "_loop", false)
 
 	// Add a label to the end of the block

@@ -39,12 +39,14 @@ func (p *parser) lookupVariable(b *codeBlock, name string) (int, int, error) {
 	}
 
 	// Iterate through the variables in the specified block
-	if (b != nil) {
+	for (b != nil) {
 		for v := b.vrbl; v != nil; v = v.next {
 			if (v.nameLC == nameLC) {
 				return v.address, v.size, nil
 			}
 		}
+
+		b = b.up
 	}
 
 	// Not found

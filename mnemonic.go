@@ -72,6 +72,8 @@ var opJMP = []opcode {
 }
 var opJSR = []opcode {
 	{modeAbsolute, A16, 0x20, 3}, {modeAbsolute, A24, 0x20, 5},
+	{modeIndirectZeroPage, A16, 0x5C, 3}, {modeIndirectZeroPage, A24, 0x5C, 5}, // modeAbsoluteIndexedIndirect 
+	{modeIndirect, A16, 0x5C, 3}, {modeIndirect, A24, 0x5C, 5},
 }
 var opRTI = []opcode {
 	{modeImplicit, A16, 0x40, 1}, {modeImplicit, A24, 0x40, 2},
@@ -753,7 +755,9 @@ func (p *parser) parseOpWidth() int {
 	sym1 := p.peekChar()
 	sym2 := p.peekAhead(1)
 	sym3 := p.peekAhead(2)
-	if (sym1 == 'a') && (sym2 == 'w') {
+	if (sym1 == 'a') && (sym2 == '1') && (sym3 == '6') {
+		p.skip(3); return A16;
+	} else if (sym1 == 'a') && (sym2 == 'w') {
 		p.skip(2); return A24;
 	} else if (sym1 == 'a') && (sym2 == '2') && (sym3 == '4') {
 		p.skip(3); return A24;

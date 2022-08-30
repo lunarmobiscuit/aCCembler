@@ -569,7 +569,7 @@ func (p *parser) parseMemoryAddress() (int, error) {
 	}
 	
 	// M@label
-	token := strings.ToLower(p.nextAZ_az_09())
+	token := p.nextAZ_az_09()
 	value, err := p.lookupConstant(token)
 	if (err == nil) {
 		return value, err
