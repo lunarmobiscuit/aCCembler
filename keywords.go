@@ -443,16 +443,16 @@ func (p *parser) parseFor(token string) error {
 		if sub.upDown { mmm = "inc" } else { mmm = "dec"}
 		p.addExprInstruction(mmm, forAddressMode, forSz, forAddress)
 		p.addExprInstruction("ldx", forAddressMode, forSz, forAddress)
-		p.addExprInstruction("cpx", modeImmediate, loopSz, end)
+		p.addExprInstruction("cpx", modeImmediate, loopSz, end+1)
 	} else if (forIsRegister) {
 		if (forRegister == "X") {
 			if sub.upDown { mmm = "inx" } else { mmm = "dex"}
 			p.addExprInstruction(mmm, modeImplicit, loopSz, 0)
-			p.addExprInstruction("cpx", modeImmediate, loopSz, end)
+			p.addExprInstruction("cpx", modeImmediate, loopSz, end+1)
 		} else if (forRegister == "Y") {
 			if sub.upDown { mmm = "iny" } else { mmm = "dey"}
 			p.addExprInstruction(mmm, modeImplicit, loopSz, 0)
-			p.addExprInstruction("cpy", modeImmediate, loopSz, end)
+			p.addExprInstruction("cpy", modeImmediate, loopSz, end+1)
 		}
 	}
 	p.addExprInstructionWithSymbol("bne", modeRelative, loopSz, 0, name + "_loop", false)

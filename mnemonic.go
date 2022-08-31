@@ -843,8 +843,23 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 				return args, fmt.Errorf("no matching single quote after %c", c)
 			}
 			p.skip(1)
+			if (p.peekChar() == 'h') || (p.peekChar() == 'H') {
+				p.skip(1)
+				c |= 0x80
+			}
 			args.value = int(c)
 			args.size = R08
+			args.hasValue = true
+		} else if (p.peekChar() == '@') {
+			p.skip(1)
+			symbol := p.nextAZ_az_09()
+			args.symbol = symbol
+			address, size, err := p.lookupVariable(p.currentCode, symbol)
+			if (err != nil) {
+				return args, fmt.Errorf("unknown variable '%s'", symbol)
+			}
+			args.value = address
+			args.size |= size
 			args.hasValue = true
 		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
@@ -854,15 +869,15 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 				args.value = value
 				args.hasValue = true
 			} else {
-				address, size, err := p.lookupVariable(p.currentCode, symbol)
-				if (err == nil) {
-					args.value = address
-					args.size |= size
+				d := p.lookupDataName(symbol)
+				if (d != nil) {
+					args.value = d.startAddr
 					args.hasValue = true
 				} else {
-					args.symbol = symbol
+					// Resolve this later
 					args.hasValue = false
 				}
+
 			}
 		} else {
 			value, err := p.nextValue()
