@@ -25,6 +25,10 @@ sub Start @$FF0000 { // C-style comment
 
 	cld
 
+	LOOP {
+		nop
+	}
+
 	/////// DEBUG
 	var inthemiddle = @$12345
 

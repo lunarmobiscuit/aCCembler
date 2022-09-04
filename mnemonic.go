@@ -29,7 +29,7 @@ const U32 = 0xFF	// 48-bit address / 32-bit registers (not implemented in 65C24T
 // Addressing modes
 const (
 	unknownMode = iota
-	modeImplicit
+	modeImplicit // or modeAccumulator
 	modeImmediate
 	modeZeroPage
 	modeZeroPageX
@@ -866,6 +866,11 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
+				if (p.peekChar() == '+') {
+					p.skip(1)
+					plus, _ := p.nextValue()
+					value += plus
+				}
 				args.value = value
 				args.hasValue = true
 			} else {
@@ -920,6 +925,11 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
+				if (p.peekChar() == '+') {
+					p.skip(1)
+					plus, _ := p.nextValue()
+					value += plus
+				}
 				args.value = value
 				args.hasValue = true
 			} else {
@@ -1002,6 +1012,11 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
+				if (p.peekChar() == '+') {
+					p.skip(1)
+					plus, _ := p.nextValue()
+					value += plus
+				}
 				args.value = value
 				args.hasValue = true
 			} else {

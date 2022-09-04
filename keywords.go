@@ -344,6 +344,11 @@ func (p *parser) parseFor(token string) error {
 		if (err != nil) {
 			return fmt.Errorf("constant '%s' not found", symbol)
 		}
+		if (p.peekChar() == '+') {
+			p.skip(1)
+			plus, _ := p.nextValue()
+			start += plus
+		}
 	} else {
 		start, err = p.nextValue()
 		if (err != nil) {
@@ -378,6 +383,11 @@ func (p *parser) parseFor(token string) error {
 		end, err = p.lookupConstant(symbol)
 		if (err != nil) {
 			return fmt.Errorf("constant '%s' not found", symbol)
+		}
+		if (p.peekChar() == '+') {
+			p.skip(1)
+			plus, _ := p.nextValue()
+			end += plus
 		}
 	} else {
 		end, err = p.nextValue()
@@ -455,7 +465,7 @@ func (p *parser) parseFor(token string) error {
 			p.addExprInstruction("cpy", modeImmediate, loopSz, end+1)
 		}
 	}
-	p.addExprInstructionWithSymbol("bne", modeRelative, loopSz, 0, name + "_loop", false)
+	p.addExprInstructionWithSymbol("bne", modeRelative, A16, 0, name + "_loop", false)
 
 	// Add a label to the end of the block
 	p.addInstructionLabel(b.name + "_end")
@@ -697,6 +707,11 @@ func (p *parser) parseBooleanExpression(keyword string) (*boolExpr, error) {
 			be.value, err = p.lookupConstant(symbol)
 			if (err != nil) {
 				return nil, fmt.Errorf("invalid constant '%s' in %s", symbol, keyword)
+			}
+			if (p.peekChar() == '+') {
+				p.skip(1)
+				plus, _ := p.nextValue()
+				be.value += plus
 			}
 		// Value
 		} else {

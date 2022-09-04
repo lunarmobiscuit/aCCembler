@@ -1,0 +1,307 @@
+/*
+ *  ROM for the mythical Apple ][4
+ *
+ *  Shell-level commands
+ *
+ */
+
+const DISK4_RAM			= $c800		// Disk][4 stores long return values in $C800 RAM
+
+/*
+ *  '?' - List the commands
+ */
+sub DoHelp {
+	var I	= @$04						; loop variable
+	var I6	= @$05						; I * 6
+	var COL	= @$06						; column 0/12/24
+
+	jsr NextLine
+	
+	lda.t #CommandListStr
+	sta.t @ARGT0
+	jsr PrintString
+	jsr NextLine
+
+	@I = 1
+	@COL = 0
+	DO {
+		jsr PrintSpace
+
+		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
+		A <<= 2
+		sta @I6
+		lda @I
+		A <<= 1
+		clc
+		adc @I6
+		sta @I6
+		tax
+
+  		lda.t CommandList,X				; CommandList[X].string
+  		sta.t @ARGT0
+		jsr PrintString
+
+		lda @COL
+		IF ==  {
+			@COL = 1
+			@TXTPOS = 12
+		}
+		ELSE {
+			IF == 1 {
+				@COL = 2
+				@TXTPOS = 24
+			}
+			IF == 2 {
+				@COL = 0
+				jsr NextLine		
+			}
+		}
+
+		@I += 1
+		lda @I
+	}
+	WHILE (<= MAX_COMMANDS)
+	
+	jsr NextLine		
+	jsr NextLine		
+
+	RETURN
+}
+
+
+/*
+ *  'ascii' - Show all the ASCII characters
+ */
+sub DoAscii {
+	var I	= @$04						; loop variable
+	var J	= @$05						; I * 6
+	var C	= @$03						; (@I << 4) + J
+
+	jsr NextLine
+	
+	lda.t #ASCIIHeaderStr
+	sta.t @ARGT0
+	jsr PrintString
+	jsr NextLine
+
+	lda.t #ASCIIDashesStr
+	sta.t @ARGT0
+	jsr PrintString
+	jsr NextLine
+
+	FOR @I = 0 TO 15 {
+		lda @I							; Print 0-F row value
+		jsr PrintHexDigit
+		lda #'-'H
+		jsr PrintChar
+
+		FOR @J = 0 TO 15 {
+			lda @C						; A = (@I << 4) + J
+			jsr PrintChar
+			inc @C
+		}
+
+		jsr NextLine
+	}
+
+	lda.t #ASCIIDashesStr
+	sta.t @ARGT0
+	jsr PrintString
+	jsr NextLine
+
+	RETURN
+}
+
+
+/*
+ *  'catalog' - Show the list of files on the harddisk or floppy
+ */
+sub DoCatalog {
+	jsr NextLine
+	
+	lda.t #CatalogHeaderStr
+	sta.t @ARGT0
+	jsr PrintString
+	jsr Disk4Name
+	jsr PrintString
+	jsr NextLine
+
+	jsr Disk4CatalogStart
+	if (!=) {
+		jsr Disk4PrintError
+		RETURN
+	}
+	jsr NextLine
+
+	LOOP {
+		jsr Disk4CatalogNext
+		if (!=) {
+			BREAK
+		}
+
+		lda #2						; Print type (3 chars)
+		sta @TXTPOS		
+		lda DISK4_RAM
+		jsr PrintChar
+		lda DISK4_RAM+1
+		jsr PrintChar
+		lda DISK4_RAM+2
+		jsr PrintChar
+
+		lda #6						; Print size (3 numeric chars)
+		sta @TXTPOS		
+		lda DISK4_RAM+3
+		jsr PrintChar
+		lda DISK4_RAM+4
+		jsr PrintChar
+		lda DISK4_RAM+5
+		jsr PrintChar
+
+		lda #10						; Print filename
+		sta @TXTPOS		
+		jsr PrintString
+		
+		jsr NextLine
+	}
+	jsr NextLine
+
+	RETURN
+}
+
+
+/*
+ *  'clear'
+ */
+sub DoClear {
+	ldx #2
+	jsr ClearScreen
+	lda #2
+	sta @TXTROW						; Start at row 2
+	lda #0
+	sta @TXTPOS						; Start at position 0
+	rts.a24
+}
+
+
+/*
+ *  'echo'
+ */
+sub DoEcho {
+	lda #$200
+	sta.t @ARGT0
+	jsr PrintString
+
+	lda #1
+	sta @TXTPAGE
+	stz @TXTPOS
+	ldx #0
+	jsr ScreenBase
+	jsr PrintString
+
+	stz @TXTPAGE
+	ldx @TXTROW
+	jsr ScreenBase
+	jsr NextLine
+
+	rts.a24
+}
+
+
+/*
+ *  'memory'
+ */
+sub DoMemory {
+	jsr NextLine
+	lda #0
+	jsr PrintHexByte
+	lda #$AD
+	jsr PrintChar
+	jsr PrintSpace
+	ldx #0
+ loop_Memory:
+	lda $00,x
+	jsr PrintHexByte
+	jsr PrintSpace
+	inx
+	cpx #8
+	bne -loop_Memory
+	jsr NextLine
+	rts.a24
+}
+
+
+/*
+ *  'reset' - restarts at the beginning on the ROM
+ *  @@@ Add a warm restart flag like on the ][+
+ */
+sub DoReset {
+	nop											; @@@ THERE IS A BUG THAT FAILS TO COUNT THE LENGTH OF IF THERE IS JUST ONE OPCODE
+	jmp Reset
+}
+
+
+/*
+ *  'text' - Switch to the TEXT screen (screen 1 or screen 2)
+ */
+sub DoText {
+	lda @TXTPAGE
+	if == {
+		lda TXTPAGE2
+	}
+
+	jsr GetChar
+	lda TXTPAGE1
+	jsr NextLine
+	rts.a24
+}
+
+
+/*
+ *  Jump to the 6502 RST vector
+ */
+sub Do2Plus {
+	sta LANGCLR					; disable the ][+ "upper" 16K (one write is sufficent)
+	sws							; Reset the stack width to 8-bits
+	ldx #$ff 					; Reset the stack to $1FF
+	txs
+	lda #0
+	sta PWREDUP 				; Make sure the Apple ][ ROM thinks this is a fresh reboot
+	jmp (RSTVECTOR)				; Jump to the 6502 64K RST vector
+}
+
+
+/*
+ *  'zzz' @@@ DEBUGGING
+ */
+sub DoZzz {
+	lda.t #100000
+	jsr PrintHexWord
+	jsr PrintSpace
+	lda.t #100000
+	jsr Wait
+	jsr PrintHexByte
+	jsr PrintSpace
+	jsr PrintSpace
+
+	lda.t #200000
+	jsr PrintHex24
+	jsr PrintSpace
+	lda.t #200000
+	jsr Wait
+	jsr PrintHexByte
+	jsr PrintSpace
+	jsr PrintSpace
+
+	lda.t #800000
+	jsr PrintHex24
+	jsr PrintSpace
+	lda.t #800000
+	jsr Wait
+	jsr PrintHexByte
+	jsr PrintSpace
+	jsr PrintSpace
+
+	jsr NextLine
+
+	rts.a24
+}

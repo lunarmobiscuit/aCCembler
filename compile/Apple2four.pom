@@ -1,7 +1,7 @@
 /*
  *  ROM for the mythical Apple ][4
  *
- *  pomme -l Apple2four.lst -o Apple2four.rom Apple2four.pom 
+ *  pomme -l Apple2four.lst -o Apple2four.rom Apple2four.pom; cp Apple2four.rom ../../izapple2/resources 
  *
  */
 
@@ -13,6 +13,7 @@ const TXTCLR		= $c050		// RW display graphics
 const TXTSET		= $c051		// RW display text
 const MIXSET		= $c053		// RW display split screen
 const TXTPAGE1		= $c054		// RW display page 1
+const TXTPAGE2		= $c055		// RW display page 2
 const LORES			= $c056		// RW display lo-res graphics
 const SETAN0		= $c058		// RW annunciator 0 off
 const SETAN1		= $c05a		// RW annunciator 1 off
@@ -21,16 +22,38 @@ const CLRAN3		= $c05f		// RW annunciator 3 on
 const TAPEIN		= $c060		// R cassete tape input
 const PADDL0		= $c064		// R analog input 0
 const PTRIG			= $c070		// RW analog input reset
+const LANGCLR		= $c082		// Disable "Language card" RAM
+const LANGSET		= $c083		// Enable "Language card" RAM (requires two writes)
 const CLRROM		= $cfff		// disable slot C8 ROM
+
+const TOP_OF_STACK	= $feff		// Put the stack in the "Language card" RAM
+
 const RSTVECTOR		= $fffc  	// Apple ][ 6502 reset vector
 const PWREDUP		= $03f4  	// Apple ][ stores #$A5 to make RST a soft reboot
 
-const N_COMMANDS	= 7			// The length of the CommandList
-
 global TXTPTR 		= @$FE.a16	// $FE-$FF is the address of the current line of text
-global TXTROW 		= @$3FF			// $3FF is the current row on the text screen
-global TXTPOS 		= @$3FE			// $3FE is the current position (column) in the text screen
-global TXTBUFFER 	= @$200			// $200-$2FF holds the line of text being typed
+global TXTROW 		= @$3FF		// $3FF is the current row on the text screen
+global TXTPOS 		= @$3FE		// $3FE is the current position (column) in the text screen
+global TXTPAGE 		= @$3FD		// $3FD is #0 for text page 1 or #1 for text page 2
+global TXTBUFFER 	= @$200		// $200-$27F holds the line of text being typed
+global TXTBUFFER2 	= @$280		// $280-$2FF holds the previous line of text typed
+
+global R0			= @$00
+global R1			= @$01
+global R2			= @$02
+global R3			= @$03
+global R4			= @$04
+global R5			= @$05
+global R6			= @$06
+global R7			= @$07
+global R8			= @$08
+global R9			= @$09
+global R10			= @$0A
+global R11			= @$0B
+global R12			= @$0C
+global R13			= @$0D
+global R14			= @$0E
+global R15			= @$0F
 
 global ARG0			= @$20
 global ARG1			= @$21
@@ -39,6 +62,9 @@ global ARGW0		= @$20.w
 global ARGW1		= @$22.w
 global ARGT0		= @$20.t
 global ARGT1		= @$23.wt
+
+const MAX_COMMANDS	= 11		// The length-1 of the CommandList
+
 
 /*
  *  The code begins with a JMPs to the OS functions
@@ -53,8 +79,13 @@ sub Start @$FF0000 {
  */
 sub Reset @$FF0200 {
 	cld
-	ldx #$ff
-	txs
+	sta LANGSET					; turn on ][+ "upper" 16K (write twice)
+	sta LANGSET
+	r16							; set the stack to be 16-bit wide
+	sws
+	ldx.w #TOP_OF_STACK			; initialize the stack to start at $FEFF
+	txs.w
+	
 	lda TXTSET					; Start in TEXT mode
 	lda TXTPAGE1				;  Page 1
 	lda SETAN0					; AN0 = TTL hi
@@ -63,13 +94,20 @@ sub Reset @$FF0200 {
 	lda CLRAN3					; AN3 = TTL lo
 	lda CLRROM					; turn off extension ROM
 	bit KBDSTRB					; clear keyboard
-	ldx #0
-	jsr ClearScreen				; clear the screen (x = row 0)
-	jsr AppleII4				; draw the header
+	
 	lda #2
 	sta @TXTROW					; Start at TEXT row 2
-	lda #0
-	sta @TXTPOS					; Start at TEXT position 0
+	stz @TXTPOS					; Start at TEXT position 0
+	
+	ldx #0
+	lda #1
+	sta @TXTPAGE				; TEXT page 2
+	jsr ClearScreen				; clear the screen (x = row 0; @TXTPAGE = 1)
+	ldx #0
+	stz @TXTPAGE				; Start in TEXT page 1
+	jsr ClearScreen				; clear the screen (x = row 0; @TXTPAGE = 0)
+
+	jsr AppleII4				; draw the header
 	; drop through to EchoKeys
 }
 
@@ -77,15 +115,14 @@ sub Reset @$FF0200 {
  *  Echo the keys as they are typed and store in @TXTBUFFER
  */
 sub EchoKeys {
-	jsr ClearInputBuffer
+	jsr ClearInputBuffers
 	LOOP {
 		jsr ScreenBase					; Set the @TEXTPTR based on @TXTROW
 		lda @TXTPOS
 		IF == {
 			lda #':'H					; Draw the prompt
 			jsr PrintChar
-			lda #'_'H					; Draw the cursor
-			jsr PrintCursor
+			jsr PrintCursor				; Draw the cursor
 		}
 		LOOP {
 			bit KBD 					; check keyboard for next key
@@ -93,31 +130,48 @@ sub EchoKeys {
 				BREAK
 			}
 		}
-		lda KBD 						; get the key code from the keyboard
-		bit KBDSTRB						; clear keyboard strobe (a.k.a. ack keyboard read)
+		lda KBD 						; get the key code from the keyboard and ack the read
+		bit KBDSTRB
 		IF == $8D {						; 13 = CR ($80 | $0D in high ASCII)
 			lda #' 'H					; delete the cursor by drawing a space
 			sta (@TXTPTR),y
 			jsr NextLine
+			jsr CurrentToPrevInputBuffer
 			jsr CommandLine
-			jsr ClearInputBuffer
+			jsr ClearCurrentInputBuffer
 			CONTINUE
-		}						
+		}
 		IF == $88 {						; 8 = BS ($80 | $08 in high ASCII)
-			lda @TXTPOS
 			if > 1 {
-				tay
+				jsr ClearCursor			; Erase the cursor
+				lda #' 'H				; Erase the current character
+				ldy @TXTPOS
 				dey
-				sty @TXTPOS
-				lda #' 'H
 				sta (@TXTPTR),y
+				dey						; Delete the last character in the text buffer
+				lda #0
+				sta @TXTBUFFER,y
+				dec @TXTPOS				; Decrement the text position
+				jsr PrintCursor			; Draw the cursor
 			}
+			CONTINUE
+		}
+		IF == $95 {						; 21 = Right Arrow ($80 | $15 in high ASCII)
+			if > 1 {
+				jsr CompleteCommand
+			}
+			CONTINUE
+		}
+		IF == $8B {						; 11 = Up Arrow ($80 | $0B in high ASCII)
+			jsr PrevToCurrentInputBuffer
+			jsr InputBufferToTextScreen
+			jsr PrintCursor			; Draw the cursor
 			CONTINUE
 		}
 		IF == $9B {						; 27 = ESC ($80 | $1B in high ASCII)
 			ldx @TXTROW
 			jsr ClearRow
-			jsr ClearInputBuffer
+			jsr ClearCurrentInputBuffer
 			lda #0
 			sta @TXTPOS					; reset to position 0
 			CONTINUE
@@ -130,12 +184,12 @@ sub EchoKeys {
 				and #$7F				; store (low) ASCII in TEXT buffer
 				dey 					; Y-1 as TEXT position starts at 1, making space for the prompt
 				sta @TXTBUFFER,y
-				lda #'_'H
 				jsr PrintCursor
 			}
 		}
 	}
 }
+
 
 /*
  *  Lookup and execute the typed command
@@ -146,7 +200,7 @@ sub CommandLine {
 
 	lda #@TXTBUFFER						; ARGT0 <- TEXT buffer
 	sta.t @ARGT0
-	FOR @I = 0 TO N_COMMANDS {
+	FOR @I = 0 TO MAX_COMMANDS {
 		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
 		A <<= 2
 		sta @I6
@@ -172,46 +226,15 @@ sub CommandLine {
 }
 
 /*
- *  Compare the text buffer with a string
- *  @ARGT0.a24 points to one string
- *  @ARGT1.a24 points to another string
- *  Return in A = #FF if match, #00 if not
+ *  Try and complete the command
  */
-sub CompareText {
-	FOR Y = 0 TO 39 {
-		lda.a24 (@ARGT0),y
-		cmp.a24 (@ARGT1),y
-		IF != {
-			RETURN 0
-		}
-		IF == 0 {
-			lda.a24 (@ARGT1),y
-			IF == 0 {
-				RETURN $FF
-			}
-			RETURN 0
-		}
-	}
-	RETURN 0
-}
-
-/*
- *  '?' - List the commands
- */
-sub DoHelp {
+sub CompleteCommand {
 	var I	= @$04						; loop variable
 	var I6	= @$05						; I * 6
 
-	jsr NextLine
-	
-	lda.t #CommandListStr
+	lda #@TXTBUFFER						; ARGT0 <- TEXT buffer
 	sta.t @ARGT0
-	jsr PrintString
-	jsr NextLine
-
-	FOR @I = 1 TO N_COMMANDS {
-		jsr PrintSpace
-
+	FOR @I = 0 TO MAX_COMMANDS {
 		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
 		A <<= 2
 		sta @I6
@@ -223,517 +246,33 @@ sub DoHelp {
 		tax
 
   		lda.t CommandList,X				; CommandList[X].string
-  		sta.t @ARGT0
-		jsr PrintString
-		jsr NextLine
-	}
-	RETURN
-}
-
-
-/*
- *  'ascii' - Show all the ASCII characters
- */
-sub DoAscii {
-	var I	= @$04						; loop variable
-	var J	= @$05						; I * 6
-	var C	= @$03						; (@I << 4) + J
-
-	jsr NextLine
-	
-	lda.t #ASCIIHeaderStr
-	sta.t @ARGT0
-	jsr PrintString
-	jsr NextLine
-
-	lda.t #ASCIIDashesStr
-	sta.t @ARGT0
-	jsr PrintString
-	jsr NextLine
-
-	FOR @I = 0 TO 15 {
-		lda @I							; Print 0-F row value
-		jsr PrintHexDigit
-		lda #'-'H
-		jsr PrintChar
-
-		FOR @J = 0 TO 15 {
-			lda @C						; A = (@I << 4) + J
-			jsr PrintChar
-			inc @C
-		}
-
-		jsr NextLine
-	}
-
-	lda.t #ASCIIDashesStr
-	sta.t @ARGT0
-	jsr PrintString
-	jsr NextLine
-
-	RETURN
-}
-
-/*
- *  'clear'
- */
-sub DoClear {
-	ldx #2
-	jsr ClearScreen
-	lda #2
-	sta @TXTROW						; Start at row 2
-	lda #0
-	sta @TXTPOS						; Start at position 0
-	rts.a24
-}
-
-/*
- *  'memory'
- */
-sub DoMemory {
-	jsr NextLine
-	lda #0
-	jsr PrintHexByte
-	lda #$AD
-	jsr PrintChar
-	jsr PrintSpace
-	ldx #0
- loop_Memory:
-	lda $00,x
-	jsr PrintHexByte
-	jsr PrintSpace
-	inx
-	cpx #8
-	bne -loop_Memory
-	jsr NextLine
-	rts.a24
-}
-
-/*
- *  Print a hex byte
- *  A = value to print
- */
-sub PrintHexByte {				
-	pha
-	lsr
-	lsr
-	lsr
-	lsr
-	jsr PrintHexDigit
-	pla
-	and #$0F
-	jsr PrintHexDigit
-	rts.a24
-}
-
-/*
- *  Print a hex digit
- *  A = nibble to print
- */
-sub PrintHexDigit {
-	cmp #10
-	bcc +print_hex_digit_09
-	clc
-	adc #$B7
-	bra +print_hex_digit
- print_hex_digit_09:
-	adc #$B0
- print_hex_digit:
-	ldy @TXTPOS
-	sta (@TXTPTR),y
-	inc @TXTPOS
-	rts.a24
-}
-
-/*
- *  Print a string
- *  @ARGT0.a24 points to the string
- */
-sub PrintString {
-	FOR X = 0 TO 39 {
-		txa
-		tay
-		lda.a24 (@ARGT0),y
-		beq +BREAK
-		ora #$80
-		ldy @TXTPOS
-		cpy #40 					; ignore if >= column 40
-		IF < {
-			sta (@TXTPTR),y
-			inc @TXTPOS
+  		sta.t @ARGT1
+		jsr CompareStartOfText
+		IF - {
+			ldx @I6
+	  		lda.t CommandList,X			; ARGT0 <- CommandList[X].string
+	  		sta.t @ARGT0
+			lda #@TXTBUFFER				; ARGT1 <- TEXT buffer
+			sta.t @ARGT1
+			jsr CopyString
+			lda.w @TXTPTR				; ARGT1 <- Current line on TEXT screen
+			inc.w						;  +1 for the cursor
+			sta.t @ARGT1
+			jsr CopyStringHigh
+			iny
+			sty @TXTPOS					; CopyString leaves the length of the string in Y
+			jsr PrintCursor
+			RETURN
 		}
 	}
+
 	RETURN
 }
 
-/*
- *  Print a character
- *  A = ASCII character
- */
-sub PrintChar {
-	ldy @TXTPOS
-	cpy #40 					; ignore if >= column 40
-	IF < {
-		sta (@TXTPTR),y
-		inc @TXTPOS
-	}
-	RETURN
-}
-
-/*
- *  Print a blank space
- */
-sub PrintSpace {
-	lda #' 'H
-	ldy @TXTPOS
-	cpy #40 					; ignore if >= column 40
-	IF < {
-		sta (@TXTPTR),y
-		inc @TXTPOS
-	}
-	RETURN
-}
-
-/*
- *  Print the cursor
- *  A = ASCII character
- *  TXTPOS is NOT updated
- */
-sub PrintCursor {
-	ldy @TXTPOS
-	cpy #40 					; ignore if >= column 40
-	IF < {
-		sta (@TXTPTR),y
-	}
-	RETURN
-}
-
-/*
- *  Print a hex byte in the top right corner of the screen
- *  A = value to print
- */
-sub PrintDebugValue {				
-	pha						; Save A
-	pha						; Copy A for 2nd digit
-	A >>= 4					; Draw hex of 1st nibble
-	IF >= 10 {
-		A += $B7
-	}
-	ELSE {
-		A += $B0
-	}
-	sta $426				; Hardcoded to top-right corner of the TEXT screen
-	pla						; Draw hex of 2nd nibble
-	A &= $0F
-	IF >= 10 {
-		A += $B7
-	}
-	ELSE {
-		A += $B0
-	}
-	sta $427				; Hardcoded to top-right corner of the TEXT screen
-	pla						; Restore A
-	RETURN
-}
-
-/*
- *  Print one character in the top right corner of the screen
- *  A = char to print
- */
-sub PrintDebugChar {				
-	sta $427
-	lda #$A0
-	sta $426
-	rts.a24
-}
-sub PrintDebug2Chars {				
-	sta.w $426
-	rts.a24
-}
-
-/*
- *  Restart at the beginning on the ROM
- *  @@@ Add a warm restart flag like on the ][+
- */
-sub DoReset {
-	nop											; @@@ THERE IS A BUG THAT FAILS TO COUNT THE LENGTH OF IF THERE IS JUST ONE OPCODE
-	jmp Reset
-}
-
-/*
- *  Jump to the 6502 RST vector
- */
-sub Do2Plus {
-	sws											; Reset the stack width to 8-bits
-	ldx #$ff 								; Reset the stack to $1FF
-	txs
-	lda #0
-	sta PWREDUP 						; Make sure the Apple ][ ROM thinks this is a fresh reboot
-	jmp (RSTVECTOR)					; Jump to the 6502 64K RST vector
-}
-
-/*
- *  Compute the TEXT screen pointer
- */
-sub ScreenBase {
-	X = @TXTROW							; X = @TXTROW
-  xsl											; X = X * 2
-	lda.w TextScreenBase,x	; Lookup the address and copy to @TXTPTR
-	sta.w @TXTPTR
-	rts.a24
-}
-
-/*
- *  Fill the TEXT row with spaces
- *  X = row to clearing
- */
-sub ClearRow {
-	xsl									; X = X * 2
-	lda.w TextScreenBase,x				; Lookup the address and copy to @TXTPTR
-	sta.w @TXTPTR
-	lda #$A0 							; $20 (space) | $80 (high ASCII)
-	ldy #0
- loop_clear_char:
-	sta (@TXTPTR),y
-	iny
-	cpy #40								; 40 columns wide
-	bne -loop_clear_char
-	rts.a24
-}
-
-/*
- *  Fill the TEXT screen with spaces from row X to row 23
- *  X = first row to start clearing
- */
-sub ClearScreen {
-	xsl									; X = X * 2
- loop_clear_line:
-	lda.w TextScreenBase,x				; Lookup the address and copy to @TXTPTR
-	sta.w @TXTPTR
-	lda #$A0 							; $20 (space) | $80 (high ASCII)
-	ldy #0
- loop_clear_char:
-	sta (@TXTPTR),y
-	iny
-	cpy #40								; 40 columns wide
-	bne -loop_clear_char
-	inx
-	inx
-	cpx #48								; 24 rows (x2 bytes pre row pointer)
-	bne -loop_clear_line
-	rts.a24
-}
-
-; Check to see if the TEXT screen needs to be scrolled, and if so, scroll
-sub NextLine {
-	lda @TXTROW							; 24 rows tall (0-23)
-	cmp #23
-	IF < {
-		inc @TXTROW						; Increment the current row
-		jsr ScreenBase					; Update the @TXTPTR
-		lda #0
-		sta @TXTPOS						; Reset to position 0
-	}
-	ELSE {
-		ldx #2
-		jsr ScrollScreen				; Scroll the screen, from row X=2
-		lda #23
-		sta @TXTROW						; Set to row 23
-		lda #0
-		sta @TXTPOS						; Reset to position 0
-	}
-	RETURN
-}
-
-/*
- *  Scroll the TEXT screen with spaces from row X to row 23
- *  X = first row to start clearing
- */
-sub ScrollScreen {
-  xsl											; X = X * 2
- loop_scroll_line:
-	lda.w TextScreenBase,x	; Lookup the address and copy to @TXTPTR
-	sta.w @TXTPTR
-	lda.w TextScreenBase+2,x
-	sta.w $00								; $00-$01 = address of the next line on the TEXT screen
-	ldy #0
- loop_scroll_char:
-	lda ($00),y
-	sta (@TXTPTR),y
-	iny
-	cpy #40									; 40 columns
-	bne -loop_scroll_char
-	inx
-	inx
-	cpx #46									; Only 23 rows (46 = 23 x 2), as the the last line gets cleared
-	bne -loop_scroll_line
- scroll_clear_last_line:
-	lda.w TextScreenBase,x	; Lookup the address and copy to @TXTPTR
-	sta.w @TXTPTR
-	lda.w #$A0A0						; Two ' 's
-	ldy #0
- loop_scroll_clear_line:
-	sta.w (@TXTPTR),y
-	iny
-	iny
-	cpy #40
-	bne -loop_scroll_clear_line
- done_with_scroll:
-	rts.a24
-}
-
-/*
- *  Clear the text input buffer (255 bytes, filled with zeros)
- */
-sub ClearInputBuffer {
-	lda #0
-	ldx #$ff
- loop_clear_buffer:
-	sta @TXTBUFFER,x
-	dex
-	bne -loop_clear_buffer
-	sta $200
-	rts.a24
-}
-
-
-/*
- *  'c081' @@@ DEBUGGING
- */
-sub DoC081 {
-	lda $C081
-	lda $C081
-	jsr NextLine
-	lda #$aa
-	sta $E000
-	lda #$E0
-	jsr PrintHexByte
-	lda #0
-	jsr PrintHexByte
-	lda #$AD
-	jsr PrintChar
-	jsr PrintSpace
-	ldx #0
- loop_c081:
-	lda $E000,x
-	jsr PrintHexByte
-	jsr PrintSpace
-	inx
-	cpx #8
-	bne -loop_c081
-	jsr NextLine
-	rts.a24
-}
-
-/*
- *  'c083' @@@ DEBUGGING
- */
-sub DoC083 {
-	lda $C083
-	lda $C083
-	jsr NextLine
-	lda @TXTPOS
-	sta $E000
-	lda $04
-	sta $E001
-	lda #$E0
-	jsr PrintHexByte
-	lda #0
-	jsr PrintHexByte
-	lda #$AD
-	jsr PrintChar
-	jsr PrintSpace
-	ldx #0
- loop_c083:
-	lda $E000,x
-	jsr PrintHexByte
-	jsr PrintSpace
-	inx
-	cpx #8
-	bne -loop_c083
-	jsr NextLine
-	rts.a24
-}
-
-
-/*
- *  Print Apple ][4 at the top of the screen
- */
-sub AppleII4 {
-	FOR X = 0 TO 39 {
-		lda Hello,x
-		beq +BREAK
-		ora #$80
-		sta $400,x
-	}
-	RETURN
-}
-
-
-/*
- *  The ROM vector table
- */
-data ROMVectors @$FF0005 u24 {
-	ClearScreen
-	NextLine
-	ScrollScreen
-	PrintChar
-	PrintSpace
-	PrintString
-	CompareText
-	AppleII4
-}
-
-/*
- *  The addresses of the 24 TEXT rows
- */
-data TextScreenBase @$FF8000 word {
-	$0400, $0480, $0500, $0580, $0600, $0680, $0700, $0780
-	$0428, $04A8, $0528, $05A8, $0628, $06A8, $0728, $07A8
-	$0450, $04D0, $0550, $05D0, $0650, $06D0, $0750, $07D0
-}
-
-
-/*  The title of the reset screen */
-data Hello string {
-	"Apple ][4"
-}
-
-/*  The header when listing commands */
-data CommandListStr string {
-	"COMMANDS:"
-}
-
-/*  The headers when printing the ASCII charset */
-data ASCIIHeaderStr string {
-	"  0123456789ABCDEF"
-}
-data ASCIIDashesStr string {
-	"  ----------------"
-}
-
-/*
- *  The list of commands
- */
-data CMD_Help string { "?" }
-data CMD_Ascii string { "ascii" }
-data CMD_Clear string { "clear" }
-data CMD_Memory string { "memory" }
-data CMD_Reset string { "reset" }
-data CMD_2Plus string { "2+" }
-data CMD_C081 string { "c081" }
-data CMD_C083 string { "c083" }
-
-data CommandList u24 {
-	CMD_Help, DoHelp
-	CMD_Ascii, DoAscii
-	CMD_Clear, DoClear
-	CMD_Memory, DoMemory
-	CMD_Reset, DoReset
-	CMD_2Plus, Do2Plus
-	CMD_C081, DoC081
-	CMD_C083, DoC083
-}
+#include "2four/util.pom"
+#include "2four/commands.pom"
+#include "2four/disk4.pom"
+#include "2four/data.pom"
 
 /*
  *  The 6502 vectors

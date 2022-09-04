@@ -34,6 +34,7 @@ func (p *parser) parseFile(filename string, buffer []uint8) error {
 				p.skip(1)
 				err := p.parseHashcode()
 				if (err != nil) {
+					fmt.Printf("ERROR in %s [line %d] -- %s\n", filename, p.n, err)
 					return err
 				}
 				continue
@@ -95,7 +96,53 @@ func (p *parser) parseFile(filename string, buffer []uint8) error {
  *  Parse the hashcode directive
  */
 func (p *parser) parseHashcode() error {
-	return errors.New("No # codes are implemented")
+	// Which hashcode is it?
+	hashcode := strings.ToLower(p.nextAZ_az_09())
+	p.skipWhitespace()
+
+	switch (hashcode) {
+	case "include":
+		// Parse the filename, e.g. #include "foo.pom"
+		if (p.peekChar() != '"') {
+			return fmt.Errorf("#include is missing the opening \"\n")
+		}
+		p.skip(1)
+		filename := p.untilQuote()
+		if (p.peekChar() != '"') {
+			return fmt.Errorf("#include is missing the closing \"\n")
+		}
+		p.skip(1)
+
+		// Load the file
+		buffer, err := readFile(filename)
+		if err != nil {
+			fmt.Printf("ERROR trying to include %s -- %s\n", filename, err)
+			return err
+		}
+
+		// Remember where we left off
+		saveB := p.b
+		saveEnd := p.end
+		saveI := p.i
+		saveN := p.n
+
+		// Parse the file
+		err = p.parseFile(filename, buffer)
+		if (err != nil) {
+			return err
+		}
+
+		// Restore where we left off
+		p.b = saveB
+		p.end = saveEnd
+		p.i = saveI
+		p.n = saveN
+
+		return nil
+	}
+
+
+	return fmt.Errorf("#%s is not a valid compiler directive", hashcode)
 }
 
 /*
