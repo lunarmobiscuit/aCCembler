@@ -1,7 +1,7 @@
 package main
 
-import "github.com/lunarmobiscuit/pomme"
+import "github.com/lunarmobiscuit/aCCembler"
 
 func main() {
-	pomme.Pomme();
+	aCCembler.Assemble();
 }

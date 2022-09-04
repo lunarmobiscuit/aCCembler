@@ -1,4 +1,4 @@
-package pomme
+package aCCembler
 
 import (
 	"flag"
@@ -165,7 +165,7 @@ const DSTRING = -1 // size of data when the value is a string
  *
  *  -flags input1[ input2 ... inputN]
  */
-func Pomme() {
+func Assemble() {
 	// Parse the flags
 	oflag := flag.String("o", "", "filename of the compiled code")
 	lflag := flag.String("l", "", "filename of the compiled listing")

@@ -396,10 +396,10 @@ sub CompleteCommand {
 	RETURN
 }
 
-#include "2four/util.pom"
-#include "2four/commands.pom"
-#include "2four/disk4.pom"
-#include "2four/data.pom"
+#include "2four/util.ac"
+#include "2four/commands.ac"
+#include "2four/disk4.ac"
+#include "2four/data.ac"
 
 /*
  *  The 6502 vectors

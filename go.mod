@@ -1,5 +1,5 @@
-module github.com/lunarmobiscuit/pomme
+module github.com/lunarmobiscuit/aCCembler
 
 go 1.19
 
-replace github.com/lunarmobiscuit/pomme => ../pomme
+replace github.com/lunarmobiscuit/aCCembler => ../aCCembler
