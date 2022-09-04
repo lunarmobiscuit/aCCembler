@@ -13,3 +13,9 @@ compile/Apple2_Test.pom
 .DS_Store
 .DS_Store
 compile/Apple2four.orig
+compile/lda.lst
+compile/lda.out
+compile/lda.pom
+compile/sta.lst
+compile/sta.out
+compile/sta.pom

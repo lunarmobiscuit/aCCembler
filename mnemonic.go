@@ -411,6 +411,8 @@ var opLDA = []opcode {
 var opSTA = []opcode {
 	{modeZeroPage, R08, 0x85, 2}, {modeZeroPage, R16, 0x85, 3}, {modeZeroPage, R24, 0x85, 3},
 	{modeZeroPageX, R08, 0x95, 2}, {modeZeroPageX, R16, 0x95, 3}, {modeZeroPageX, R24, 0x95, 3},
+	{modeZeroPageY, R08, 0x99, 3}, {modeZeroPageY, R16, 0x99, 4}, {modeZeroPageY, R24, 0x99, 4},
+	{modeZeroPageY, A24, 0x99, 5}, {modeZeroPageY, W16, 0x99, 4}, {modeZeroPageY, W24, 0x99, 5},
 	{modeAbsolute, A16, 0x8D, 3}, {modeAbsolute, A24, 0x8D, 5},
 		{modeAbsolute, R16, 0x8D, 4}, {modeAbsolute, R24, 0x8D, 4},
 		{modeAbsolute, W16, 0x8D, 5}, {modeAbsolute, W24, 0x8D, 5},
@@ -745,6 +747,10 @@ func (p *parser) parseMnemonic(mnemonic string) error {
  *  (returning the string and index)
  */
 func (p *parser) parseOpWidth() int {
+	// Parse twice, as there can be two values .b.a24 or .a24.t
+	return p.parseOpWidthOnce() | p.parseOpWidthOnce()
+}
+func (p *parser) parseOpWidthOnce() int {
 	// There is no '.' and thus no suffix
 	if (p.peekChar() != '.') {
 		return A16

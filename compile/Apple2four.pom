@@ -58,10 +58,28 @@ global R15			= @$0F
 global ARG0			= @$20
 global ARG1			= @$21
 global ARG2			= @$22
+global ARG3			= @$23
+global ARG4			= @$24
+global ARG5			= @$25
+global ARG6			= @$26
+global ARG7			= @$27
 global ARGW0		= @$20.w
 global ARGW1		= @$22.w
+global ARGW2		= @$24.w
+global ARGW3		= @$26.w
+global ARGW4		= @$27.w
+global ARGW5		= @$29.w
+global ARGW6		= @$2B.w
+global ARGW7		= @$2D.w
 global ARGT0		= @$20.t
 global ARGT1		= @$23.wt
+global ARGT2		= @$26.wt
+global ARGT3		= @$29.wt
+global ARGT4		= @$2C.wt
+global ARGT5		= @$2F.wt
+global ARGT6		= @$31.wt
+global ARGT7		= @$34.wt
+global ARGN			= @$7F
 
 const MAX_COMMANDS	= 11		// The length-1 of the CommandList
 
@@ -198,8 +216,117 @@ sub CommandLine {
 	var I	= @$04						; loop variable
 	var I6	= @$05						; I * 6
 
-	lda #@TXTBUFFER						; ARGT0 <- TEXT buffer
-	sta.t @ARGT0
+	lda #@TXTBUFFER						; ARGT0 <- the command text
+	sta.w @ARGT0
+
+	lda #0								; ARGN <- the number of args (not including the command)
+	sta @ARGN
+
+	ldy #3								; Index to the next ARGTn
+	ldx #0
+	LOOP {
+		lda @TXTBUFFER,x				; Look for a space and break into ARGTn
+		IF (== 0) {
+			BREAK
+		}
+		cmp #' '
+		IF (==) {
+			LOOP {
+				lda @TXTBUFFER,x				; Skip over extra spaces
+				IF (== 0) {
+					BREAK
+				}
+				cmp #' '
+				IF (==) {
+					lda #0
+					sta @TXTBUFFER,x
+					inx
+				}
+				BREAK
+			}
+
+			clc
+			lda #@TXTBUFFER
+			adx.w
+			adc.w #1
+			sta.t.a16 @ARGT0,y
+			iny
+			iny
+			iny
+			inc @ARGN
+			inx
+			BREAK
+		}
+		inx								; DO WHILE X < 127 (leave one zero in the TEXT buffer)
+		cpx #127
+		if (>=) {
+			BREAK
+		}
+	}
+
+txa
+jsr PrintDebugValue
+	LOOP {
+		lda @TXTBUFFER,x				; Look for commas and break into ARGTn
+		IF (== 0) {
+			BREAK
+		}
+		cmp #','
+		IF (==) {
+			lda #0
+			sta @TXTBUFFER,x
+			inx
+
+			LOOP {
+				lda @TXTBUFFER,x				; Skip over extra spaces
+				IF (== 0) {
+					BREAK
+				}
+				cmp #' '
+				IF (==) {
+					lda #0
+					sta @TXTBUFFER,x
+					inx
+				}
+				BREAK
+			}
+
+			clc
+			lda #@TXTBUFFER
+			adx.w
+			adc.w #1
+			sta.t.a16 @ARGT0,y
+			iny
+			iny
+			iny
+			inc @ARGN
+		}
+		inx								; DO WHILE X < 127 (leave one zero in the TEXT buffer)
+		cpx #127
+		if (>=) {
+			BREAK
+		}
+	}
+
+jsr NextLine
+jsr PrintString
+jsr PrintSpace
+lda @ARGN
+jsr PrintHexByte
+jsr NextLine
+lda.t @ARGT0
+jsr PrintHex24
+jsr NextLine
+lda.t @ARGT1
+jsr PrintHex24
+jsr NextLine
+lda.t @ARGT2
+jsr PrintHex24
+jsr NextLine
+lda.t @ARGT3
+jsr PrintHex24
+jsr NextLine
+
 	FOR @I = 0 TO MAX_COMMANDS {
 		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
 		A <<= 2
