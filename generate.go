@@ -30,6 +30,14 @@ func (p *parser) generateCode(out *os.File, listing *os.File) error {
 		return err
 	}
 
+	fmt.Printf("\n")
+	fmt.Printf("+ %6d bytes ($%x) of CODE\n", p.codeSize, p.codeSize)
+	fmt.Printf("+ %6d bytes ($%x) of DATA\n", p.dataSize, p.dataSize)
+	fmt.Printf("+ %6d bytes ($%x) in TOTAL\n", p.codeSize + p.dataSize, p.codeSize + p.dataSize)
+	fmt.Printf("+ %6d bytes ($%x) of FILLER\n", p.fillerSize, p.fillerSize)
+	fmt.Printf("+ %6d bytes ($%x) in the OUTPUT file\n", p.codeSize + p.dataSize + p.fillerSize, p.codeSize + p.dataSize + p.fillerSize)
+	fmt.Printf("\n")
+
 	return nil
 }
 
@@ -259,6 +267,7 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 			// Fill any gaps between blocks
 			if (b.startAddr > lastEndAddr) {
 				p.outputFiller(b.startAddr - lastEndAddr, out, listing)
+				p.fillerSize += b.startAddr - lastEndAddr
 			}
 			lastEndAddr = b.endAddr
 
@@ -271,11 +280,13 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 				return err
 			}
 
+			p.codeSize += b.endAddr - b.startAddr
 			b = b.next
 		} else {
 			// Fill any gaps between blocks
 			if (d.startAddr > lastEndAddr) {
 				p.outputFiller(d.startAddr - lastEndAddr, out, listing)
+				p.fillerSize += d.startAddr - lastEndAddr
 			}
 			lastEndAddr = d.endAddr
 
@@ -288,6 +299,7 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 				return err
 			}
 
+			p.dataSize += d.endAddr - d.startAddr
 			d = d.next
 		}
 	}

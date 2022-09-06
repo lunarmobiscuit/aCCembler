@@ -132,6 +132,8 @@ The aCCembler is very much a work in progress.  Its features are being written a
 
 # Example
 
+The markdown indents are much too deep, but the following nonsense code shows off the structure that this syntax allows along with the use of varialbes and use of .w and .t suffixes:
+
 ```
 const FIVE = 5
 global HERE = @$200

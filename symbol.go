@@ -16,7 +16,7 @@ func (p *parser) lookupConstant(name string) (int, error) {
 	// Iterate through all the constants
 	for c := p.cnst; c != nil; c = c.next {
 		if (c.nameLC == nameLC) {
-			return c.value, nil
+			return c.value + p.plusOrMinus(), nil
 		}
 	}
 
@@ -34,7 +34,7 @@ func (p *parser) lookupVariable(b *codeBlock, name string) (int, int, error) {
 	// Iterate through all the global variables
 	for v := p.global; v != nil; v = v.next {
 		if (v.nameLC == nameLC) {
-			return v.address, v.size, nil
+			return v.address + p.plusOrMinus(), v.size, nil
 		}
 	}
 
@@ -42,6 +42,7 @@ func (p *parser) lookupVariable(b *codeBlock, name string) (int, int, error) {
 	for (b != nil) {
 		for v := b.vrbl; v != nil; v = v.next {
 			if (v.nameLC == nameLC) {
+				v.address += p.plusOrMinus()
 				return v.address, v.size, nil
 			}
 		}

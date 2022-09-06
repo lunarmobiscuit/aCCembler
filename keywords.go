@@ -283,6 +283,7 @@ func (p *parser) parseFor(token string) error {
 	forIsMemory := false
 	forIsRegister := false
 	var forMRegStr string
+	endIsMemory := false
 	forSz := R08
 	p.skipWhitespace()
 	sym1 := p.peekChar()
@@ -344,11 +345,6 @@ func (p *parser) parseFor(token string) error {
 		if (err != nil) {
 			return fmt.Errorf("constant '%s' not found", symbol)
 		}
-		if (p.peekChar() == '+') {
-			p.skip(1)
-			plus, _ := p.nextValue()
-			start += plus
-		}
 	} else {
 		start, err = p.nextValue()
 		if (err != nil) {
@@ -378,16 +374,21 @@ func (p *parser) parseFor(token string) error {
 		if (err != nil) {
 			return err
 		}
+		endIsMemory = true
+	} else if (sym1 == '@') {
+		p.skip(1)
+		symbol := p.nextAZ_az_09()
+		end, forSz, err = p.lookupVariable(p.lastCode, symbol)
+		if (err != nil) {
+			return fmt.Errorf("variable '@%s' not found", symbol)
+		}
+		if (end <= 0xff) { forAddressMode = modeZeroPage } else { forAddressMode = modeAbsolute }
+		endIsMemory = true
 	} else if p.isNextAZ() {
 		symbol := p.nextAZ_az_09()
 		end, err = p.lookupConstant(symbol)
 		if (err != nil) {
 			return fmt.Errorf("constant '%s' not found", symbol)
-		}
-		if (p.peekChar() == '+') {
-			p.skip(1)
-			plus, _ := p.nextValue()
-			end += plus
 		}
 	} else {
 		end, err = p.nextValue()
@@ -458,11 +459,19 @@ func (p *parser) parseFor(token string) error {
 		if (forRegister == "X") {
 			if sub.upDown { mmm = "inx" } else { mmm = "dex"}
 			p.addExprInstruction(mmm, modeImplicit, loopSz, 0)
-			p.addExprInstruction("cpx", modeImmediate, loopSz, end+1)
+			if (endIsMemory) {
+				p.addExprInstruction("cpx", modeAbsolute, loopSz, end)
+			} else {
+				p.addExprInstruction("cpx", modeImmediate, loopSz, end+1)
+			}
 		} else if (forRegister == "Y") {
 			if sub.upDown { mmm = "iny" } else { mmm = "dey"}
 			p.addExprInstruction(mmm, modeImplicit, loopSz, 0)
-			p.addExprInstruction("cpy", modeImmediate, loopSz, end+1)
+			if (endIsMemory) {
+				p.addExprInstruction("cpy", modeAbsolute, loopSz, end)
+			} else {
+				p.addExprInstruction("cpy", modeImmediate, loopSz, end+1)
+			}
 		}
 	}
 	p.addExprInstructionWithSymbol("bne", modeRelative, A16, 0, name + "_loop", false)

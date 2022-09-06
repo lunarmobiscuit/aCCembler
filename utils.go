@@ -340,6 +340,30 @@ func (p *parser) isComment() bool {
 }
 
 /*
+ *  Check for any +val or -val suffixes to constants or variables
+ */
+func (p *parser) plusOrMinus() int {
+	// skip past whitespace
+	j := p.i
+	for p.b[j] <= ' ' {
+		j += 1
+	}
+
+	if (p.b[j] == '+') {
+		p.skip(j-p.i+1)
+		plus, _ := p.nextValue()
+		return plus
+	}
+	if (p.b[j] == '-') {
+		p.skip(j-p.i+1)
+		minus, _ := p.nextValue()
+		return -minus
+	}
+	return 0
+}
+
+
+/*
  *  Return the next character
  *  (returning the char but not updating the index)
  */

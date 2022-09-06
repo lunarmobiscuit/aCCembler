@@ -34,6 +34,10 @@ type parser struct {
 
 	data		*dataBlock		// linked list of data items
 	lastData	*dataBlock
+
+	codeSize	int
+	dataSize	int
+	fillerSize	int
 }
 
 // Linked list of constants

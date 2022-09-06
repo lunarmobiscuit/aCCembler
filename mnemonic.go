@@ -730,7 +730,11 @@ func (p *parser) parseMnemonic(mnemonic string) error {
 	}
 
 	// Blend the specified size with the size implied by the arguments
-	args.size |= sz
+	aW := args.size & A48
+	if (sz & A48 > aW) { aW = sz & A48 }
+	rW := args.size & R32
+	if (sz & R32 > rW) { rW = sz & R32 }
+	args.size = aW | rW
 
 	// Find the matching mnemonic, matching addressMode and size
 	for m := range mnemonics {
@@ -872,11 +876,6 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
-				if (p.peekChar() == '+') {
-					p.skip(1)
-					plus, _ := p.nextValue()
-					value += plus
-				}
 				args.value = value
 				args.hasValue = true
 			} else {
@@ -901,7 +900,7 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 
 		if (args.hasValue) {
 			args.size = valueToPrefix(args.value)
-			if (args.size == R32) {
+			if (args.size == R32) || (args.size == W32) {
 				return args, fmt.Errorf("the value '%x' is too large for 24-bits", args.value)
 			}
 		} else {
@@ -931,11 +930,6 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
-				if (p.peekChar() == '+') {
-					p.skip(1)
-					plus, _ := p.nextValue()
-					value += plus
-				}
 				args.value = value
 				args.hasValue = true
 			} else {
@@ -1018,11 +1012,6 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.symbol = symbol
 			value, err := p.lookupConstant(symbol)
 			if (err == nil) {
-				if (p.peekChar() == '+') {
-					p.skip(1)
-					plus, _ := p.nextValue()
-					value += plus
-				}
 				args.value = value
 				args.hasValue = true
 			} else {
@@ -1171,7 +1160,7 @@ func (p *parser) addInstruction(mnemonic int, addressMode int, size int, hasValu
 		}
 	}
 
-	return fmt.Errorf("invalid address mode %s invalid for %s", addressModeStr(addressMode), strings.ToUpper(m.name))
+	return fmt.Errorf("invalid address mode %s, width [%s] invalid for %s", addressModeStr(addressMode), widthStr(size), strings.ToUpper(m.name))
 }
 
 /*
@@ -1250,5 +1239,29 @@ func addressModeStr(mode int) string {
 		case modeIndirectIndexedY: return "mmm ($aa),Y [indirect Y]"
 		case modeIndirectZeroPage: return "mmm ($zz) [indirect zero page]"
 		case modeAbsoluteIndexedIndirectX: return "mmm ($aaaa,X) [absolute indexed indirect X]"
+	}
+}
+
+/*
+ *  Explain the width in a string
+ */
+func widthStr(width int) string {
+	switch (width) {
+		default: return "A16/R08"
+		case A24: return "A24/R08"
+		case A32: return "A32/R08"
+		case A48: return "A48/R08"
+		case R16: return "A16/R16"
+		case R24: return "A16/R24"
+		case R32: return "A16/R32"
+		case W16: return "A24/R16"
+		case W24: return "A24/R24"
+		case W32: return "A24/R32"
+		case V16: return "A32/R16"
+		case V24: return "A32/R24"
+		case V32: return "A32/R32"
+		case U16: return "A48/R16"
+		case U24: return "A48/R24"
+		case U32: return "A48/R32"
 	}
 }

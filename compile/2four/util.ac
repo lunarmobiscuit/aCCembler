@@ -11,17 +11,10 @@
  */
 sub ScreenBase {
 	X = @TXTROW							; X = @TXTROW
-  xsl											; X = X * 2
+	xsl									; X = X * 2
 
-  lda @TXTPAGE
-  if == {
-		lda.w TextScreenBase,x
-  }
-  ELSE {
-		lda.w TextScreenBase,x
-		adc #$400
-  }
-	sta.w @TXTPTR					; Lookup the address and copy to @TXTPTR
+	lda.w TextScreenBase,x				; Lookup the address and copy to @TXTPTR
+	sta.w @TXTPTR
 	rts.a24
 }
 
@@ -107,7 +100,7 @@ sub CopyStringHigh {
 
 /*
  *  Print a 24-bit hex value
- *  A.w = value to print
+ *  A.t = value to print
  */
 sub PrintHex24 {				
 	pha.t
@@ -176,6 +169,162 @@ sub PrintHexDigit {
 }
 
 
+/*
+ *  Parse a value
+ *    @ARGT0.a24 points to the string
+ *	  Returns value in A
+ */
+sub ParseNumber {
+	lda.a24 (@ARGT0)
+	cmp #'$'
+	IF (==) {					; $HEX value
+		jmp ParseHexNumber
+	}
+	ELSE {								; DECIMAL value		
+		jmp ParseDecimalNumber
+	}
+}
+sub ParseHexNumber {
+	var VAL = @R0.t					; Holds the value being generated
+	stz.t @VAL
+
+	ldy #1							; Y = 1, to skip the leading '$'
+	LOOP {
+		lda.a24 (@ARGT0),Y
+		IF (==) {					; Zero terminated string
+			BREAK
+		}
+
+		lda.t @VAL					; @VAL <<= 4, making space for the next nibble
+		asl.t
+		asl.t
+		asl.t
+		asl.t
+		sta.t @VAL
+
+		lda.a24 (@ARGT0),Y
+		cmp #'0'
+		IF (>=) {
+			cmp #'9'
+			IF (<=) {
+				sec
+				sbc #'0'			; @VAL += C - '0'
+				clc
+				adc.t @VAL
+				sta.t @VAL
+				iny
+				CONTINUE
+			}
+			cmp #'A'
+			IF (>=) {
+				cmp #'G'
+				IF (<=) {
+					sec
+					sbc #55			; @VAL += C - 'A' + 10
+					clc
+					adc.t @VAL
+					sta.t @VAL
+					iny
+					CONTINUE
+				}
+				cmp #'a'
+				IF (>=) {
+					cmp #'g'
+					IF (<=) {
+						sec
+						sbc #87	; @VAL += C - 'a' + 10
+						clc
+						adc.t @VAL
+						sta.t @VAL
+						iny
+						CONTINUE
+					}
+				}
+			}
+			}
+			BREAK						; Stop for any character not 0-9A-Za-z
+	}
+
+	lda.t @VAL
+	RETURN
+}
+sub ParseDecimalNumber {
+	var VAL = @R0.t					; Holds the value being generated
+	stz.t @VAL
+
+	ldy #0
+	LOOP {
+		lda.a24 (@ARGT0),Y
+		IF (==) {					; Zero terminated string
+			BREAK
+		}
+
+		lda.t @VAL					; @VAL *= 10 (VAL = VAL*8 + VAL*2)
+		jsr Times10
+		sta.t @VAL
+
+		lda.a24 (@ARGT0),Y
+		cmp #'0'
+		IF (>=) {
+			cmp #'9'
+			IF (<=) {
+				sec
+				sbc #'0'			; @VAL += C - '0'
+				clc
+				adc.t @VAL
+				sta.t @VAL
+				iny
+				CONTINUE
+			}
+			BREAK
+		}
+	}
+
+	lda.t @VAL
+	RETURN
+}
+
+
+/*
+ *  Calculate A * 10
+ *    A = value
+ *	  X is clobbered
+ *	  Returns A = A * 10
+ */
+sub Times10 {
+	asl.t							; A *= 10 (A = A*8 + A*2)
+	tax.t
+	asl.t
+	asl.t
+	clc
+	adx.t
+	rts.a24
+}
+
+
+/*
+ *  Calculate A.t mod X.t
+ *    A = value
+ *	  X = modulo
+ *	  Returns Y = A mod X, X = A / X
+ */
+sub Modulo {
+	var MODULO = @R12.t
+	stx.t @MODULO
+	ldy #0
+	LOOP {
+		sec
+		sbc.t @MODULO
+		if (-) {
+			clc
+			adc.t @MODULO
+			RETURN
+		}
+		iny
+	}
+}
+
+
 
 /*
  *  Print a string
@@ -195,6 +344,13 @@ sub PrintString {
 			inc @TXTPOS
 		}
 	}
+	RETURN
+}
+sub PrintError {
+	jsr NextLine
+	jsr PrintString
+	jsr NextLine
+	jsr NextLine
 	RETURN
 }
 
@@ -362,33 +518,31 @@ sub ClearRow {
 /*
  *  Fill the TEXT screen with spaces from row X to row 23
  *  X = first row to start clearing
- *  @TXTPAGE = page 1 or 2
  */
 sub ClearScreen {
-	clc
+	var ROWPTR = @R0.t
+
 	xsl									; X = X * 2
- loop_clear_line:
-  lda @TXTPAGE
-  if == {
-		lda.w TextScreenBase,x				; Lookup the address and copy to @TXTPTR
-  }
-  ELSE {
-		lda.w TextScreenBase,x				; Lookup the address and copy to @TXTPTR
-		adc #$400
-  }
-	sta.w @TXTPTR
-	lda #$A0 							; $20 (space) | $80 (high ASCII)
-	ldy #0
- loop_clear_char:
-	sta (@TXTPTR),y
-	iny
-	cpy #40								; 40 columns wide
-	bne -loop_clear_char
-	inx
-	inx
-	cpx #48								; 24 rows (x2 bytes pre row pointer)
-	bne -loop_clear_line
-	rts.a24
+	DO {
+		lda.t TextScreenBase,X			; Pre-calculated row values
+		ldy @DISPMODE
+		cpy #DISP_TEXT_2				; TEXT page 2
+		IF (==) {
+			clc
+			adc.t #$400
+		}
+		sta.w @ROWPTR
+
+		lda #$A0 						; $20 (space) | $80 (high ASCII)
+		FOR Y = 0 TO 39 {				; 40 columns
+			sta (@ROWPTR),y
+		}
+		inx
+		inx
+		cpx #48							; 24 rows (x2 bytes pre row pointer)
+	}
+	WHILE (!=)
+	RETURN
 }
 
 /*

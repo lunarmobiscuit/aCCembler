@@ -1,9 +1,11 @@
 /*
  *  ROM for the mythical Apple ][4
  *
- *  pomme -l Apple2four.lst -o Apple2four.rom Apple2four.pom; cp Apple2four.rom ../../izapple2/resources 
+ *  aCCembler -l Apple2four.lst -o Apple2four.rom Apple2four.ac; cp Apple2four.rom ../../izapple2/resources 
  *
  */
+
+#include "2four/regs_args.ac"
 
 const KBD			= $c000		// R last key pressed + 128
 const KBDSTRB		= $c010		// RW keyboard strobe
@@ -34,54 +36,21 @@ const PWREDUP		= $03f4  	// Apple ][ stores #$A5 to make RST a soft reboot
 global TXTPTR 		= @$FE.a16	// $FE-$FF is the address of the current line of text
 global TXTROW 		= @$3FF		// $3FF is the current row on the text screen
 global TXTPOS 		= @$3FE		// $3FE is the current position (column) in the text screen
-global TXTPAGE 		= @$3FD		// $3FD is #0 for text page 1 or #1 for text page 2
 global TXTBUFFER 	= @$200		// $200-$27F holds the line of text being typed
 global TXTBUFFER2 	= @$280		// $280-$2FF holds the previous line of text typed
 
-global R0			= @$00
-global R1			= @$01
-global R2			= @$02
-global R3			= @$03
-global R4			= @$04
-global R5			= @$05
-global R6			= @$06
-global R7			= @$07
-global R8			= @$08
-global R9			= @$09
-global R10			= @$0A
-global R11			= @$0B
-global R12			= @$0C
-global R13			= @$0D
-global R14			= @$0E
-global R15			= @$0F
+const DISP_TEXT_1	= 0
+const DISP_TEXT_2	= 1
+const DISP_80COL_1	= 2
+const DISP_80COL_2	= 3
+const DISP_LORES_1	= 4
+const DISP_LOWRS_2	= 5
+const DISP_HIRES_1	= 6
+const DISP_HIRES_2	= 7
+const DISP_II4		= 8
+global DISPMODE 	= @$3FD		// $3FC holds the current display mode (DISP_xxxx)
 
-global ARG0			= @$20
-global ARG1			= @$21
-global ARG2			= @$22
-global ARG3			= @$23
-global ARG4			= @$24
-global ARG5			= @$25
-global ARG6			= @$26
-global ARG7			= @$27
-global ARGW0		= @$20.w
-global ARGW1		= @$22.w
-global ARGW2		= @$24.w
-global ARGW3		= @$26.w
-global ARGW4		= @$27.w
-global ARGW5		= @$29.w
-global ARGW6		= @$2B.w
-global ARGW7		= @$2D.w
-global ARGT0		= @$20.t
-global ARGT1		= @$23.wt
-global ARGT2		= @$26.wt
-global ARGT3		= @$29.wt
-global ARGT4		= @$2C.wt
-global ARGT5		= @$2F.wt
-global ARGT6		= @$31.wt
-global ARGT7		= @$34.wt
-global ARGN			= @$7F
-
-const MAX_COMMANDS	= 11		// The length-1 of the CommandList
+const N_COMMANDS	= 14		// The number of commands in CommandList
 
 
 /*
@@ -103,7 +72,7 @@ sub Reset @$FF0200 {
 	sws
 	ldx.w #TOP_OF_STACK			; initialize the stack to start at $FEFF
 	txs.w
-	
+
 	lda TXTSET					; Start in TEXT mode
 	lda TXTPAGE1				;  Page 1
 	lda SETAN0					; AN0 = TTL hi
@@ -117,13 +86,13 @@ sub Reset @$FF0200 {
 	sta @TXTROW					; Start at TEXT row 2
 	stz @TXTPOS					; Start at TEXT position 0
 	
+	ldx #0						; Clear the TEXT 2 page
+	lda #DISP_TEXT_2
+	sta @DISPMODE
+	jsr ClearScreen
+	stz @DISPMODE				; Start in TEXT mode, page 1
 	ldx #0
-	lda #1
-	sta @TXTPAGE				; TEXT page 2
-	jsr ClearScreen				; clear the screen (x = row 0; @TXTPAGE = 1)
-	ldx #0
-	stz @TXTPAGE				; Start in TEXT page 1
-	jsr ClearScreen				; clear the screen (x = row 0; @TXTPAGE = 0)
+	jsr ClearScreen				; Clear the TEXT 1 page
 
 	jsr AppleII4				; draw the header
 	; drop through to EchoKeys
@@ -151,8 +120,7 @@ sub EchoKeys {
 		lda KBD 						; get the key code from the keyboard and ack the read
 		bit KBDSTRB
 		IF == $8D {						; 13 = CR ($80 | $0D in high ASCII)
-			lda #' 'H					; delete the cursor by drawing a space
-			sta (@TXTPTR),y
+			jsr ClearCursor
 			jsr NextLine
 			jsr CurrentToPrevInputBuffer
 			jsr CommandLine
@@ -183,15 +151,22 @@ sub EchoKeys {
 		IF == $8B {						; 11 = Up Arrow ($80 | $0B in high ASCII)
 			jsr PrevToCurrentInputBuffer
 			jsr InputBufferToTextScreen
-			jsr PrintCursor			; Draw the cursor
+			jsr PrintCursor				; Draw the cursor
 			CONTINUE
 		}
 		IF == $9B {						; 27 = ESC ($80 | $1B in high ASCII)
-			ldx @TXTROW
+			ldx @TXTROW					; Clear the current text buffer
 			jsr ClearRow
 			jsr ClearCurrentInputBuffer
 			lda #0
 			sta @TXTPOS					; reset to position 0
+
+			lda @DISPMODE				; return to TEXT screen 1
+			if (!=) {
+				lda TXTPAGE1
+				stz @DISPMODE
+			}
+
 			CONTINUE
 		}
 		IF > $9F {						; >31 = Not a control character ($80 | $1F in high ASCII)
@@ -217,7 +192,7 @@ sub CommandLine {
 	var I6	= @$05						; I * 6
 
 	lda #@TXTBUFFER						; ARGT0 <- the command text
-	sta.w @ARGT0
+	sta.t @ARGT0
 
 	lda #0								; ARGN <- the number of args (not including the command)
 	sta @ARGN
@@ -232,7 +207,7 @@ sub CommandLine {
 		cmp #' '
 		IF (==) {
 			LOOP {
-				lda @TXTBUFFER,x				; Skip over extra spaces
+				lda @TXTBUFFER,x		; Skip over extra spaces
 				IF (== 0) {
 					BREAK
 				}
@@ -245,10 +220,9 @@ sub CommandLine {
 				BREAK
 			}
 
-			clc
 			lda #@TXTBUFFER
+			clc
 			adx.w
-			adc.w #1
 			sta.t.a16 @ARGT0,y
 			iny
 			iny
@@ -264,8 +238,6 @@ sub CommandLine {
 		}
 	}
 
-txa
-jsr PrintDebugValue
 	LOOP {
 		lda @TXTBUFFER,x				; Look for commas and break into ARGTn
 		IF (== 0) {
@@ -291,10 +263,9 @@ jsr PrintDebugValue
 				BREAK
 			}
 
-			clc
 			lda #@TXTBUFFER
+			clc
 			adx.w
-			adc.w #1
 			sta.t.a16 @ARGT0,y
 			iny
 			iny
@@ -308,26 +279,10 @@ jsr PrintDebugValue
 		}
 	}
 
-jsr NextLine
-jsr PrintString
-jsr PrintSpace
-lda @ARGN
-jsr PrintHexByte
-jsr NextLine
-lda.t @ARGT0
-jsr PrintHex24
-jsr NextLine
-lda.t @ARGT1
-jsr PrintHex24
-jsr NextLine
-lda.t @ARGT2
-jsr PrintHex24
-jsr NextLine
-lda.t @ARGT3
-jsr PrintHex24
-jsr NextLine
+	lda.t @ARGT1						; Save @ARGT1 as it's needed for CompareText
+	sta.t @R29
 
-	FOR @I = 0 TO MAX_COMMANDS {
+	FOR @I = 0 TO N_COMMANDS-1 {
 		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
 		A <<= 2
 		sta @I6
@@ -342,10 +297,13 @@ jsr NextLine
   		sta.t @ARGT1
 		jsr CompareText
 		IF - {
+			lda.t @R29					; Restore @ARGT1
+			sta.t @ARGT1
+
 			ldx @I6
 	  		lda.t CommandList+3,X		; CommandList[X].func
-	  		sta.t @ARGT1
-			jsr.a24 (@ARGT1)
+	  		sta.t @R0
+			jsr.a24 (@R0)
 			RETURN
 		}
 	}
@@ -361,7 +319,7 @@ sub CompleteCommand {
 
 	lda #@TXTBUFFER						; ARGT0 <- TEXT buffer
 	sta.t @ARGT0
-	FOR @I = 0 TO MAX_COMMANDS {
+	FOR @I = 0 TO N_COMMANDS-1 {
 		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
 		A <<= 2
 		sta @I6
@@ -397,8 +355,8 @@ sub CompleteCommand {
 }
 
 #include "2four/util.ac"
-#include "2four/commands.ac"
 #include "2four/disk4.ac"
+#include "2four/commands.ac"
 #include "2four/data.ac"
 
 /*

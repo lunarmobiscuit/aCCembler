@@ -12,33 +12,30 @@ const DISK4_RET0		= $c0f7		// Disk][4 return value 0 (3 bytes) READ
 const DISK4_RET1		= $c0fa		// Disk][4 return value 1 (3 bytes) READ
 const DISK4_RET2		= $c0fd		// Disk][4 return value 2 (2 bytes) READ
 const DISK4_GO			= $c0ff		// Disk][4 execute-error (1 byte) READ/WRITE
+const DISK4_RAM			= $c800		// Disk][4 RAM for passing large values in/out
 
 const SLOT_7_ROM		= $c700		// Start of slot 7 ROM, to enable $C800 RAM
 const PR_RAM			= $c800		// Disk][4 stores long return values in $C800 RAM
 
-const DISK4_RESET			= 0
-const DISK4_VOLUME_NAME		= 1
-const DISK4_CATALOG			= 2
-const DISK4_CATALOG_NEXT 	= 3
-const DISK4_EXISTS			= 4
-const DISK4_CREATE			= 5
-const DISK4_OPEN			= 6
-const DISK4_READ			= 7
-const DISK4_READ_NEXT		= 8
-const DISK4_READ_DMA		= 9
-const DISK4_WRITE			= 10
-const DISK4_WRITE_NEXT		= 11
-const DISK4_WRITE_DMA		= 12
-const DISK4_CLOSE			= 13
-const DISK4_CHDIR			= 14
-const DISK4_CHDIR_UP		= 15
+const DISK4_VOLUME_NAME		= 0
+const DISK4_CATALOG			= 1
+const DISK4_CATALOG_NEXT 	= 2
+const DISK4_EXISTS			= 3
+const DISK4_CREATE			= 4
+const DISK4_OPEN			= 5
+const DISK4_READ			= 6
+const DISK4_READ_DMA		= 7
+const DISK4_WRITE			= 8
+const DISK4_WRITE_DMA		= 9
+const DISK4_CLOSE			= 10
+const DISK4_CHDIR			= 11
+const DISK4_CHDIR_UP		= 12
 
 const DISK4_SUCCESS			= 0
 const DISK4_END_OF_CATALOG	= 1
 const DISK4_END_OF_FILE		= 2
 const DISK4_ERR_NOT_FOUND	= 3
 const DISK4_ERR_READ_ERROR	= 4
-
 
 /*
  *  Ask for the disk name
@@ -50,7 +47,7 @@ sub Disk4Name {
 	lda DISK4_GO
 	sta @R0
 
-	lda SLOT_7_ROM
+	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
 	lda.w #PR_RAM
 	sta.t @ARGT0
 
@@ -80,7 +77,7 @@ sub Disk4CatalogNext {
 	lda DISK4_GO
 	sta @R0
 
-	lda SLOT_7_ROM
+	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
 	lda.w #PR_RAM+6
 	sta.t @ARGT0
 
@@ -89,16 +86,85 @@ sub Disk4CatalogNext {
 }
 
 /*
+ *  Open a file
+ *    ARGT0 = filename
+ *    Returns A = DISK4_SUCCESS or DISK4_ERR_NOT_FOUND
+ *    Returns X = file number
+ */
+sub Disk4Open {
+	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
+	FOR Y = 0 TO 16 {			; Copy the filename into $C800
+		lda.a24 (@ARG0),Y
+		sta PR_RAM,Y
+		if (==) {
+			BREAK
+		}
+	}
+
+	lda #DISK4_OPEN
+	sta DISK4_CMD
+	lda DISK4_GO
+	ldx DISK4_RET0
+	RETURN
+}
+
+
+/*
+ *  Close a file
+ *    A = file number
+ */
+sub Disk4Close {
+	sta DISK4_ARG0
+	lda #DISK4_CLOSE
+	sta DISK4_CMD
+	lda DISK4_GO
+	RETURN
+}
+
+
+/*
+ *  Read a file
+ */
+sub Disk4Read {
+	lda #DISK4_READ
+	sta DISK4_CMD
+	lda DISK4_GO
+	IF (!=) {
+		RETURN
+	}
+	lda.t DISK4_RET0			; RET0 has the number of bytes actually read
+	sta.t @R0
+
+	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
+	FOR Y = 0 TO 1048576 {
+lda.t @R0
+tya.t
+cmp.t @R0
+		cpy.t @R0				; RET0 has the number of bytes actually read
+		if (==) {
+			BREAK
+		}
+
+		lda.a24.t PR_RAM,Y
+		sta.a24.t (@ARG0),Y
+sta.a24.t $8000,Y
+	}
+
+	RETURN DISK4_SUCCESS
+}
+
+/*
  *  Print the Disk4 error (@@@ add switch for error code)
  */
 sub Disk4PrintError {
-	lda.t #Disk4ErrorStr
-	sta.t @ARG0
-	jsr NextLine
-	jsr PrintString
-	jsr NextLine
-	jsr NextLine
-
+	IF (== DISK4_ERR_NOT_FOUND) {
+		lda.t #Disk4ErrorNotFoundStr	
+	}
+	ELSE {
+		lda.t #Disk4ErrorStr	
+	}
+	sta.t @ARGT0
+	jsr PrintError
 	RETURN
 }
 
