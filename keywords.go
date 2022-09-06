@@ -308,6 +308,15 @@ func (p *parser) parseFor(token string) error {
 		if (forAddress <= 0xff) { forAddressMode = modeZeroPage } else { forAddressMode = modeAbsolute }
 		forIsMemory = true
 		forMRegStr = fmt.Sprintf("@%s", symbol)
+	} else if (sym1 == '%') && ((sym2 == 'R') || (sym2 == 'r')) {
+		p.skip(2)
+		forAddress, err := p.nextValue()
+		if (err != nil) {
+			return fmt.Errorf("invalid register '%R%c'", p.peekChar())
+		}
+		forAddressMode = modeZeroPage
+		forIsMemory = true
+		forMRegStr = fmt.Sprintf("%R%d", forAddress)
 	} else if (sym1 == 'A') {
 		return fmt.Errorf("you can't iterate a FOR loop on register A")
 	} else if (sym1 == 'X') {
@@ -383,6 +392,14 @@ func (p *parser) parseFor(token string) error {
 			return fmt.Errorf("variable '@%s' not found", symbol)
 		}
 		if (end <= 0xff) { forAddressMode = modeZeroPage } else { forAddressMode = modeAbsolute }
+		endIsMemory = true
+	} else if (sym1 == '%') && ((sym2 == 'R') || (sym2 == 'r')) {
+		p.skip(2)
+		end, err = p.nextValue()
+		if (err != nil) {
+			return fmt.Errorf("invalid register '%R%c'", p.peekChar())
+		}
+		forAddressMode = modeZeroPage
 		endIsMemory = true
 	} else if p.isNextAZ() {
 		symbol := p.nextAZ_az_09()

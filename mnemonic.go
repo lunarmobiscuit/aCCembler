@@ -750,7 +750,6 @@ func (p *parser) parseMnemonic(mnemonic string) error {
 	if (err != nil) {
 		return err
 	}
-fmt.Printf("%s.%s (%s) %s\n", mnemonic, widthStr(sz), widthStr(args.size), addressModeStr(args.mode))
 
 	// Blend the specified size with the size implied by the arguments
 	aW := args.size & A48
@@ -885,21 +884,24 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 	} else if (sym == '#') { // mmm #$aa or mmm #$aaaa
 		p.skip(1)
 		args.mode = modeImmediate
-		if p.peekChar() == '\'' {
+		sym = p.peekChar()
+		sym1 = p.peekAhead(1)
+		if sym == '\'' {
 			p.skip(1)
 			c := p.nextChar()
-			if p.peekChar() != '\'' {
+			if sym != '\'' {
 				return args, fmt.Errorf("no matching single quote after %c", c)
 			}
 			p.skip(1)
-			if (p.peekChar() == 'h') || (p.peekChar() == 'H') {
+			sym = p.peekChar()
+			if (sym == 'h') || (sym == 'H') {
 				p.skip(1)
 				c |= 0x80
 			}
 			args.value = int(c)
 			args.size = R08
 			args.hasValue = true
-		} else if (p.peekChar() == '@') {
+		} else if (sym == '@') {
 			p.skip(1)
 			symbol := p.nextAZ_az_09()
 			args.symbol = symbol
@@ -909,6 +911,14 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			}
 			args.value = address
 			args.size |= size
+			args.hasValue = true
+		} else if (sym == '%') && ((sym1 == 'R') || (sym1 == 'r')) {
+			p.skip(2)
+			value, err := p.nextValue()
+			if (err != nil) {
+				return args, err
+			}
+			args.value = value
 			args.hasValue = true
 		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
@@ -952,8 +962,10 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		}
 	} else if (sym == '(') { // mmm ($aa) or mmm ($aaaa)
 		p.skip(1)
+		sym = p.peekChar()
+		sym1 = p.peekAhead(1)
 		args.mode = modeIndirect // mmm ($aaaa)
-		if (p.peekChar() == '@') {
+		if (sym == '@') {
 			p.skip(1)
 			symbol := p.nextAZ_az_09()
 			args.symbol = symbol
@@ -963,6 +975,14 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			}
 			args.value = address
 			args.size |= size
+			args.hasValue = true
+		} else if (sym == '%') && ((sym1 == 'R') || (sym1 == 'r')) {
+			p.skip(2)
+			value, err := p.nextValue()
+			if (err != nil) {
+				return args, err
+			}
+			args.value = value
 			args.hasValue = true
 		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()
@@ -1035,7 +1055,9 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			}
 		}
 	} else { // mmm $vvvv
-		if (p.peekChar() == '@') {
+		sym = p.peekChar()
+		sym1 = p.peekAhead(1)
+		if (sym == '@') {
 			p.skip(1)
 			symbol := p.nextAZ_az_09()
 			args.symbol = symbol
@@ -1045,6 +1067,14 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			}
 			args.value = address
 			args.size |= size
+			args.hasValue = true
+		} else if (sym == '%') && ((sym1 == 'R') || (sym1 == 'r')) {
+			p.skip(2)
+			value, err := p.nextValue()
+			if (err != nil) {
+				return args, err
+			}
+			args.value = value
 			args.hasValue = true
 		} else if p.isNextAZ() {
 			symbol := p.nextAZ_az_09()

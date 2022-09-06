@@ -540,6 +540,14 @@ func (p *parser) parseExpressionArg(token string) (int, int, int, error) {
 				return 0, 0, 0, fmt.Errorf("unknown variable '@%s'", token)
 			}
 			return MEMORY, address, size, nil
+		// register
+		} else if (p.peekChar() == '%') && ((p.peekAhead(1) == 'R') || (p.peekAhead(1) == 'r')) {
+			p.skip(2)
+			address, err := p.nextValue()
+			if (err != nil) {
+				return 0, 0, 0, fmt.Errorf("invalid register '%R%c'", p.peekChar())
+			}
+			return MEMORY, address, p.parseOpWidth(), nil
 		// number
 		} else {
 			value, err := p.nextValue()
