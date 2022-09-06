@@ -168,6 +168,12 @@ func (p *parser) parseRegister(mnemonic string) error {
 				} else {
 					comment += fmt.Sprintf(" ($%06x,X)", args.value)
 				}
+			case modeXY:
+				comment += fmt.Sprintf(" XY")
+			case modeIndirectXY:
+				comment += fmt.Sprintf(" (XY)")
+			case modeIndexedIndirectXY:
+				comment += fmt.Sprintf(" (X),Y")
 			}
 			p.addInstructionComment(comment)
 

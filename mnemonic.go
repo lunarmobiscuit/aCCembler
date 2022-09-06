@@ -44,6 +44,10 @@ const (
 	// Added on the 65c02
 	modeIndirectZeroPage
 	modeAbsoluteIndexedIndirectX
+	// Added on the 65c2402
+	modeXY
+	modeIndirectXY
+	modeIndexedIndirectXY
 )
 
 // All the valid assembly language mnemonics
@@ -407,6 +411,15 @@ var opLDA = []opcode {
 	{modeIndirectZeroPage, A16, 0xB2, 2}, {modeIndirectZeroPage, A24, 0xB2, 3},
 		{modeIndirectZeroPage, R16, 0xB2, 3}, {modeIndirectZeroPage, R24, 0xB2, 3},
 		{modeIndirectZeroPage, W16, 0xB2, 3}, {modeIndirectZeroPage, W24, 0xB2, 3},
+	{modeXY, A16, 0x7B, 1}, {modeXY, A24, 0x7B, 2},
+		{modeXY, R16, 0x7B, 2}, {modeXY, R24, 0x7B, 2},
+		{modeXY, W16, 0x7B, 2}, {modeXY, W24, 0x7B, 2},
+	{modeIndirectXY, A16, 0x9B, 1}, {modeIndirectXY, A24, 0x9B, 2},
+		{modeIndirectXY, R16, 0x9B, 2}, {modeIndirectXY, R24, 0x9B, 2},
+		{modeIndirectXY, W16, 0x9B, 2}, {modeIndirectXY, W24, 0x9B, 2},
+	{modeIndexedIndirectXY, A16, 0xBB, 1}, {modeIndexedIndirectXY, A24, 0xBB, 2},
+		{modeIndexedIndirectXY, R16, 0xBB, 2}, {modeIndexedIndirectXY, R24, 0xBB, 2},
+		{modeIndexedIndirectXY, W16, 0xBB, 2}, {modeIndexedIndirectXY, W24, 0xBB, 2},
 }
 var opSTA = []opcode {
 	{modeZeroPage, R08, 0x85, 2}, {modeZeroPage, R16, 0x85, 3}, {modeZeroPage, R24, 0x85, 3},
@@ -431,6 +444,15 @@ var opSTA = []opcode {
 	{modeIndirectZeroPage, A16, 0x92, 2}, {modeIndirectZeroPage, A24, 0x92, 3},
 		{modeIndirectZeroPage, R16, 0x92, 3}, {modeIndirectZeroPage, R24, 0x92, 3},
 		{modeIndirectZeroPage, W16, 0x92, 3}, {modeIndirectZeroPage, W24, 0x92, 3},
+	{modeXY, A16, 0x8B, 1}, {modeXY, A24, 0x8B, 2},
+		{modeXY, R16, 0x8B, 2}, {modeXY, R24, 0x8B, 2},
+		{modeXY, W16, 0x8B, 2}, {modeXY, W24, 0x8B, 2},
+	{modeIndirectXY, A16, 0xAB, 1}, {modeIndirectXY, A24, 0xAB, 2},
+		{modeIndirectXY, R16, 0xAB, 2}, {modeIndirectXY, R24, 0xAB, 2},
+		{modeIndirectXY, W16, 0xAB, 2}, {modeIndirectXY, W24, 0xAB, 2},
+	{modeIndexedIndirectXY, A16, 0xCB, 1}, {modeIndexedIndirectXY, A24, 0xCB, 2},
+		{modeIndexedIndirectXY, R16, 0xCB, 2}, {modeIndexedIndirectXY, R24, 0xCB, 2},
+		{modeIndexedIndirectXY, W16, 0xCB, 2}, {modeIndexedIndirectXY, W24, 0xCB, 2},
 }
 var opLDX = []opcode {
 	{modeImmediate, R08, 0xA2, 2}, {modeImmediate, R16, 0xA2, 4}, {modeImmediate, R24, 0xA2, 5},
@@ -728,6 +750,7 @@ func (p *parser) parseMnemonic(mnemonic string) error {
 	if (err != nil) {
 		return err
 	}
+fmt.Printf("%s.%s (%s) %s\n", mnemonic, widthStr(sz), widthStr(args.size), addressModeStr(args.mode))
 
 	// Blend the specified size with the size implied by the arguments
 	aW := args.size & A48
@@ -803,9 +826,25 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 	var args assemblyArgs
 	args.size = p.abWidth
 	sym := p.peekChar()
+	sym1 := p.peekAhead(1)
+	sym2 := p.peekAhead(2)
+	sym3 := p.peekAhead(3)
+	sym4 := p.peekAhead(4)
 	if (sym == ';') || (sym == '/') || (sym == CR) || (sym == LF) { // mmm
 		args.mode = modeImplicit
 		args.size = A16
+	} else if ((sym == 'X') || (sym == 'x')) && ((sym1 == 'Y') || (sym1 == 'y'))  { // mmm XY
+		p.skip(2)
+		args.mode = modeXY
+		args.size = A16 // require the .suffix
+	} else if (sym == '(') && ((sym1 == 'X') || (sym1 == 'x')) && ((sym2 == 'Y') || (sym2 == 'y')) && (sym3 == ')')  { // mmm (XY)
+		p.skip(4)
+		args.mode = modeIndirectXY
+		args.size = A16 // require the .suffix
+	} else if (sym == '(') && ((sym1 == 'X') || (sym1 == 'x')) && (sym2 == ')') && (sym3 == ',') && ((sym4 == 'Y') || (sym4 == 'y'))  { // mmm (X),Y
+		p.skip(5)
+		args.mode = modeIndexedIndirectXY
+		args.size = A16 // require the .suffix
 	} else if (sym == '+') || (sym == '-') { // bmm +$aa or bmm -$aa or bmm +$aaaa or bmm -$aaaa
 		p.skip(1)
 		args.mode = modeRelative
@@ -1239,6 +1278,9 @@ func addressModeStr(mode int) string {
 		case modeIndirectIndexedY: return "mmm ($aa),Y [indirect Y]"
 		case modeIndirectZeroPage: return "mmm ($zz) [indirect zero page]"
 		case modeAbsoluteIndexedIndirectX: return "mmm ($aaaa,X) [absolute indexed indirect X]"
+		case modeXY: return "mmm XY [address X+Y]"
+		case modeIndirectXY: return "mmm (XY) [indirect X+Y]"
+		case modeIndexedIndirectXY: return "mmm (X),Y [indexed indirect (X)+Y]"
 	}
 }
 

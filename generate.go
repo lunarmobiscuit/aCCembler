@@ -30,8 +30,6 @@ func (p *parser) generateCode(out *os.File, listing *os.File) error {
 		return err
 	}
 
-	fmt.Printf("\n")
-	fmt.Printf("+ %6d bytes ($%x) of CODE\n", p.codeSize, p.codeSize)
 	fmt.Printf("+ %6d bytes ($%x) of DATA\n", p.dataSize, p.dataSize)
 	fmt.Printf("+ %6d bytes ($%x) in TOTAL\n", p.codeSize + p.dataSize, p.codeSize + p.dataSize)
 	fmt.Printf("+ %6d bytes ($%x) of FILLER\n", p.fillerSize, p.fillerSize)
@@ -84,6 +82,11 @@ func (p *parser) resolveCodeSymbols(b *codeBlock) error {
 
 		// Skip implicit
 		if (i.addressMode == modeImplicit) {
+			continue
+		}
+
+		// Skip XY modes
+		if (i.addressMode == modeXY) || (i.addressMode == modeIndirectXY) || (i.addressMode == modeIndexedIndirectXY) {
 			continue
 		}
 
@@ -244,7 +247,7 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 		}
 		variable := fmt.Sprintf("%06x%s   ; GLOBAL @%s\n", v.address, size, v.name)
 		listing.WriteString(variable)
-		fmt.Printf(variable)
+		//fmt.Printf(variable)
 
 	}
 
@@ -273,7 +276,7 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 
 			sub := fmt.Sprintf("\n%06x ; SUB %s:\n", b.startAddr, b.name)
 			listing.WriteString(sub)
-			fmt.Printf(sub)
+			//fmt.Printf(sub)
 
 			err := p.outputCodeBlock(b, out, listing)
 			if (err != nil) {
@@ -292,7 +295,7 @@ func (p *parser) outputCode(out *os.File, listing *os.File) error {
 
 			data := fmt.Sprintf("\n%06x ; DATA %s:\n", d.startAddr, d.name)
 			listing.WriteString(data)
-			fmt.Printf(data)
+			//fmt.Printf(data)
 
 			err := p.outputDataBlock(d, out, listing)
 			if (err != nil) {
@@ -320,7 +323,7 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 		}
 		variable := fmt.Sprintf("%06x%s   ; VAR @%s\n", v.address, size, v.name)
 		listing.WriteString(variable)
-		fmt.Printf(variable)
+		//fmt.Printf(variable)
 	}
 
 	// Loop through all the instructions
@@ -393,14 +396,14 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 
 			line += "\n"
 			listing.WriteString(line)
-			fmt.Printf(line)
+			//fmt.Printf(line)
 			continue
 		} else if (i.mnemonic == 0) {
 		// Label
 			line += fmt.Sprintf("                %s:\n", i.symbol)
 
 			listing.WriteString(line)
-			fmt.Printf(line)
+			//fmt.Printf(line)
 			continue
 		} else {
 		// Mnemonic
@@ -497,6 +500,12 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 				} else {
 					args += fmt.Sprintf(" ($%06x,X)", i.value)
 				}
+			case modeXY:
+				args += fmt.Sprintf(" XY")
+			case modeIndirectXY:
+				args += fmt.Sprintf(" (XY)")
+			case modeIndexedIndirectXY:
+				args += fmt.Sprintf(" (X),Y")
 			}
 			line += args
 
@@ -517,7 +526,7 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 		if (byteIdx > 0) {
 			out.Write(bytes[:byteIdx])
 		}
-		fmt.Printf(line)
+		//fmt.Printf(line)
 
 		// IF/FOR/LOOP/DO/ETC
 		if (i.subBlock != nil) {
@@ -565,7 +574,7 @@ func (p *parser) outputDataBlock(d *dataBlock, out *os.File, listing *os.File) e
 
 		listing.WriteString(line)
 		out.Write(bytes)
-		fmt.Printf(line)
+		//fmt.Printf(line)
 	}
 
 	return nil
@@ -580,7 +589,7 @@ func (p *parser) outputFiller(length int, out *os.File, listing *os.File) {
 	for j := range bytes { bytes[j] = 0x88 }
 	filler := fmt.Sprintf("\n; %d BYTES of FILLER\n", length)
 	listing.WriteString(filler)
-	fmt.Printf(filler)
+	//fmt.Printf(filler)
 	out.Write(bytes)
 }
 
