@@ -280,7 +280,7 @@ sub CommandLine {
 	}
 
 	lda.t @ARGT1						; Save @ARGT1 as it's needed for CompareText
-	sta.t @R29
+	sta.t %R29
 
 	FOR @I = 0 TO N_COMMANDS-1 {
 		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
@@ -297,13 +297,13 @@ sub CommandLine {
   		sta.t @ARGT1
 		jsr CompareText
 		IF - {
-			lda.t @R29					; Restore @ARGT1
+			lda.t %R29					; Restore @ARGT1
 			sta.t @ARGT1
 
 			ldx @I6
 	  		lda.t CommandList+3,X		; CommandList[X].func
-	  		sta.t @R0
-			jsr.a24 (@R0)
+	  		sta.t %R0
+			jsr.a24 (%R0)
 			RETURN
 		}
 	}

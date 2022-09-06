@@ -242,31 +242,40 @@ func (p *parser) parseVariable(b *codeBlock, name string) error {
 	}
 	p.skip(1)
 
-	p.skipWhitespace()
-	if (p.peekChar() != '@') {
-		return fmt.Errorf("%s '%s' is missing a '@'", keyword, name)
-	}
-	p.skip(1)
-
-	// M@$aaaa
 	var address int
-	if (p.peekChar() == '$') { // M@$aaaa
+	p.skipWhitespace()
+	if (p.peekChar() == '@') {
+		p.skip(1)
+
+		// M@$aaaa
+		if (p.peekChar() == '$') { // M@$aaaa
+			address, err = p.nextValue()
+			if (err != nil) {
+				return fmt.Errorf("%s '%s' specifies an invalid address", keyword, name)
+			}
+		} else {
+			// M@label  ; label = contstant or variable
+			token := p.nextAZ_az_09()
+			address, err = p.lookupConstant(token)
+			if (err != nil) {
+				address, _, err = p.lookupVariable(b, token)
+				if (err != nil) {
+					return fmt.Errorf("%s '%s' specifies an unknown variable or constant '%s'", keyword, name, token)
+				}
+			}
+		}
+	} else if (p.peekChar() == '%') && ((p.peekAhead(1) == 'R') || (p.peekAhead(1) == 'r')) {
+		p.skip(2)
+
+		// %Rn
 		address, err = p.nextValue()
 		if (err != nil) {
 			return fmt.Errorf("%s '%s' specifies an invalid address", keyword, name)
 		}
 	} else {
-		// M@label  ; label = contstant or variable
-		token := p.nextAZ_az_09()
-		address, err = p.lookupConstant(token)
-		if (err != nil) {
-			address, _, err = p.lookupVariable(b, token)
-			if (err != nil) {
-				return fmt.Errorf("%s '%s' specifies an unknown variable or constant '%s'", keyword, name, token)
-			}
-		}
+		return fmt.Errorf("%s '%s' is missing a '@' or '%cR'", keyword, name, '%')
 	}
-	
+
 	// Optional size
 	size := p.parseOpWidth()
 

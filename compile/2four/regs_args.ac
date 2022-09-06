@@ -3,39 +3,6 @@
  *
  */
 
-global R0			= @$00
-global R1			= @$01
-global R2			= @$02
-global R3			= @$03
-global R4			= @$04
-global R5			= @$05
-global R6			= @$06
-global R7			= @$07
-global R8			= @$08
-global R9			= @$09
-global R10			= @$0A
-global R11			= @$0B
-global R12			= @$0C
-global R13			= @$0D
-global R14			= @$0E
-global R15			= @$0F
-global R16			= @$10
-global R17			= @$11
-global R18			= @$12
-global R19			= @$13
-global R20			= @$14
-global R21			= @$15
-global R22			= @$16
-global R23			= @$17
-global R24			= @$18
-global R25			= @$19
-global R26			= @$1A
-global R27			= @$1B
-global R28			= @$1C
-global R29			= @$1D
-global R30			= @$1E
-global R31			= @$1F
-
 global ARG0			= @$20
 global ARG1			= @$21
 global ARG2			= @$22

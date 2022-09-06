@@ -45,13 +45,13 @@ sub Disk4Name {
 	lda #DISK4_VOLUME_NAME
 	sta DISK4_CMD
 	lda DISK4_GO
-	sta @R0
+	sta %R0
 
 	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
 	lda.w #PR_RAM
 	sta.t @ARGT0
 
-	lda @R0 
+	lda %R0 
 	RETURN
 }
 
@@ -75,13 +75,13 @@ sub Disk4CatalogNext {
 	lda #DISK4_CATALOG_NEXT
 	sta DISK4_CMD
 	lda DISK4_GO
-	sta @R0
+	sta %R0
 
 	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
 	lda.w #PR_RAM+6
 	sta.t @ARGT0
 
-	lda @R0 
+	lda %R0 
 	RETURN
 }
 
@@ -133,14 +133,14 @@ sub Disk4Read {
 		RETURN
 	}
 	lda.t DISK4_RET0			; RET0 has the number of bytes actually read
-	sta.t @R0
+	sta.t %R0
 
 	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
 	FOR Y = 0 TO 1048576 {
-lda.t @R0
+lda.t %R0
 tya.t
-cmp.t @R0
-		cpy.t @R0				; RET0 has the number of bytes actually read
+cmp.t %R0
+		cpy.t %R0				; RET0 has the number of bytes actually read
 		if (==) {
 			BREAK
 		}

@@ -185,7 +185,7 @@ sub ParseNumber {
 	}
 }
 sub ParseHexNumber {
-	var VAL = @R0.t					; Holds the value being generated
+	var VAL = %R0.t					; Holds the value being generated
 	stz.t @VAL
 
 	ldy #1							; Y = 1, to skip the leading '$'
@@ -249,7 +249,7 @@ sub ParseHexNumber {
 	RETURN
 }
 sub ParseDecimalNumber {
-	var VAL = @R0.t					; Holds the value being generated
+	var VAL = %R0.t					; Holds the value being generated
 	stz.t @VAL
 
 	ldy #0
@@ -309,7 +309,7 @@ sub Times10 {
  *	  Returns Y = A mod X, X = A / X
  */
 sub Modulo {
-	var MODULO = @R12.t
+	var MODULO = %R12.t
 	stx.t @MODULO
 	ldy #0
 	LOOP {
@@ -520,7 +520,7 @@ sub ClearRow {
  *  X = first row to start clearing
  */
 sub ClearScreen {
-	var ROWPTR = @R0.t
+	var ROWPTR = %R0.t
 
 	xsl									; X = X * 2
 	DO {

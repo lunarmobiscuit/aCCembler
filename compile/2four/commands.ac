@@ -239,7 +239,7 @@ sub DoLoad {
 		RETURN
 	}
 
-	var FN = @R9.b
+	var FN = %R9.b
 	jsr Disk4Open
 	if (!=) {
 		jsr Disk4PrintError
@@ -250,8 +250,8 @@ sub DoLoad {
 	lda #$6000							; Use $6000 as a read buffer // @@@ TBD
 	sta.t @ARGT0
 
-	var IDX = @R3.t						; index of total bytes read
-	var ACTUAL = @R6.t					; actual bytes read per Disk4Read
+	var IDX = %R3.t						; index of total bytes read
+	var ACTUAL = %R6.t					; actual bytes read per Disk4Read
 
 	stz.t @IDX
 	LOOP {
@@ -328,7 +328,7 @@ sub DoView {
 		RETURN
 	}
 
-	var FN = @R11.b
+	var FN = %R11.b
 	jsr Disk4Open
 	if (!=) {
 		jsr Disk4PrintError
@@ -339,10 +339,10 @@ sub DoView {
 	lda #$6000							; Use $6000 as a read buffer // @@@ TBD
 	sta.t @ARGT0
 
-	var IDX 		= @R3.t				; index into the read buffer
-	var ACTUAL 		= @R6.t				; actual bytes read per Disk4Read
-	var LINENUM 	= @R9.b				; line count
-	var STOP 		= @R10.b			; stop scrolling
+	var IDX 		= %R3.t				; index into the read buffer
+	var ACTUAL 		= %R6.t				; actual bytes read per Disk4Read
+	var LINENUM 	= %R9.b				; line count
+	var STOP 		= %R10.b			; stop scrolling
 
 	stz @LINENUM
 	stz @STOP
@@ -400,8 +400,8 @@ sub DoView {
 	RETURN
 }
 sub View_Paginate {
-	var LINENUM 	= @R9.b		; line count
-	var STOP 		= @R11.b	; stop scrolling
+	var LINENUM 	= %R9.b		; line count
+	var STOP 		= %R11.b	; stop scrolling
 
 	inc @LINENUM
 	lda @LINENUM				; Pause every N_LINES_PER_PAGE lines (not 24, as there is a header)
@@ -432,9 +432,9 @@ sub View_Paginate {
 sub DoPeek {
 	var START_ADDR 	= @TOP_OF_STACK+4.t		; starting address
 	var END_ADDR 	= @TOP_OF_STACK+7.t		; ending address
-	var LINENUM 	= @R9.b					; line count
-	var STOP 		= @R10.b				; stop scrolling
-	var CUR_ADDR 	= @R11.t				; current address
+	var LINENUM 	= %R9.b					; line count
+	var STOP 		= %R10.b				; stop scrolling
+	var CUR_ADDR 	= %R11.t				; current address
 
 	lda.t @ARGN								; must specify a filename
 	if (< 1) {
@@ -499,7 +499,7 @@ sub DoPeek {
 	RETURN
 }
 sub Draw_Peek_Line {
-	var ADDR = @R11.t				; starting address
+	var ADDR = %R11.t				; starting address
 
 	lda #'$'H						; $addr- xx xx xx xx xx xx xx xx ........
 	jsr PrintChar
@@ -534,8 +534,8 @@ sub Draw_Peek_Line {
 	RETURN
 }
 sub Loop_Paginate {
-	var LINENUM 	= @R9.b					; line count
-	var STOP 		= @R10.b				; stop scrolling
+	var LINENUM 	= %R9.b					; line count
+	var STOP 		= %R10.b				; stop scrolling
 
 	inc @LINENUM
 	lda @LINENUM							; Pause every N_LINES_PER_PAGE lines (not 24, as there is a header)
@@ -563,8 +563,8 @@ sub Loop_Paginate {
  *  'poke' addr,value
  */
 sub DoPoke {
-	var ADDR 		= @R11.t			; starting address
-	var VALUE 		= @R0.b				; line count
+	var ADDR 		= %R11.t			; starting address
+	var VALUE 		= %R0.b				; line count
 
 	lda.t @ARGN							; must specify a filename
 	if (< 1) {
