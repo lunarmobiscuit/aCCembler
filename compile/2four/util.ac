@@ -184,7 +184,7 @@ sub ParseNumber(STR %%7.t) {
 	}
 }
 sub ParseHexNumber(STR X) {
-	var VAL = %R0.t					; Holds the value being generated
+	var VAL = %R125.t				; Holds the value being generated
 	stz.t @VAL
 
 	ldy #1							; Y = 1, to skip the leading '$'
@@ -248,8 +248,8 @@ sub ParseHexNumber(STR X) {
 	RETURN
 }
 sub ParseDecimalNumber(STR X) {
-	var VAL = %R0.t					; Holds the value being generated
-	var STR = %R3.t					; Holds the value being generated
+	var VAL = %R125.t				; Holds the value being generated
+	var STR = %R122.t				; Saves the string address
 	stz.t @VAL
 	stx.t @STR
 
@@ -307,7 +307,7 @@ sub Times10(VALUE A) {
  *	  Returns Y = A mod X, X = A / X
  */
 sub Modulo(VALUE A, MOD X) {
-	var MODULO = %R12.t
+	var MODULO = %R125.t
 	stx.t @MODULO
 	ldy #0
 	LOOP {
@@ -328,7 +328,7 @@ sub Modulo(VALUE A, MOD X) {
  *  @ARGT0.a24 points to the string
  */
 sub PrintString(STR %%7.t) {
-	var IDX = %R0
+	var IDX = %R127
 	FOR @IDX = 0 TO 39 {
 		ldx.t @STR
 		ldy @IDX
@@ -521,7 +521,7 @@ sub ClearRow(ROW X) {
  *    First row (X) is ignored for TEXT page 2
  */
 sub ClearScreen(FIRST_ROW X) {
-	var ROWPTR = %R0.t
+	var ROWPTR = %R125.t
 
 	xsl									; X = X * 2
 	DO {
@@ -574,15 +574,16 @@ sub NextLine() {
  *  Scroll the TEXT screen with spaces from row X to row 23
  */
 sub ScrollScreen(FIRST_ROW X) {
-  xsl											; X = X * 2
+	var NEXTPTR = %R126.w
+	xsl										; X = X * 2
  loop_scroll_line:
-	lda.w TextScreenBase,x	; Lookup the address and copy to @TXTPTR
+	lda.w TextScreenBase,x					; Lookup the address and copy to @TXTPTR
 	sta.w @TXTPTR
 	lda.w TextScreenBase+2,x
-	sta.w $00								; $00-$01 = address of the next line on the TEXT screen
+	sta.w @NEXTPTR							; address of the next line on the TEXT screen
 	ldy #0
  loop_scroll_char:
-	lda ($00),y
+	lda (@NEXTPTR),y
 	sta (@TXTPTR),y
 	iny
 	cpy #40									; 40 columns
@@ -594,7 +595,7 @@ sub ScrollScreen(FIRST_ROW X) {
  scroll_clear_last_line:
 	lda.w TextScreenBase,x	; Lookup the address and copy to @TXTPTR
 	sta.w @TXTPTR
-	lda.w #$A0A0						; Two ' 's
+	lda.w #$A0A0							; Two high ASCII ' 's
 	ldy #0
  loop_scroll_clear_line:
 	sta.w (@TXTPTR),y

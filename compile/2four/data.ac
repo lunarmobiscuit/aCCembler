@@ -11,15 +11,41 @@
  */
 data ROMVectors @$FF0005 u24 {
 	Wait
-	ClearScreen
-	NextLine
-	ScrollScreen
+	GetChar
 	PrintChar
 	PrintSpace
+	PrintCursor
+	ClearCursor
 	PrintString
-	PlayBeep
+	PrintError
+	PrintHexDigit
+	PrintHexByte
+	PrintHexWord
+	PrintHex24
+	NextLine
+	ClearRow
+	ClearScreen
+	ScrollScreen
 	CompareText
+	CompareStartOfText
+	CopyString
+	CopyStringHigh
+	ParseNumber
+	ParseHexNumber
+	ParseDecimalNumber
+	Times10
+	Modulo
+	PlayBeep
 	AppleII4
+}
+
+data DOSVectors @$FF0100 u24 {
+	Disk4Name
+	Disk4CatalogStart
+	Disk4CatalogNext
+	Disk4Open
+	Disk4Close
+	Disk4Read
 }
 
 /*
@@ -72,6 +98,10 @@ data LoadedBytesToStr string {
 	" bytes to $"
 }
 
+data NotRUNFileError string {
+	"*** FILE Must be a RUN file"
+}
+
 /*  General error message for bad argument */
 data InvalidValue string {
 	"*** INVALID VALUE"
@@ -107,6 +137,7 @@ data CMD_Load string { "load" }
 data CMD_Peek string { "peek" }
 data CMD_Poke string { "poke" }
 data CMD_Reset string { "reset" }
+data CMD_Run string { "run" }
 data CMD_Text string { "text" }
 data CMD_Wait string { "wait" }
 data CMD_View string { "view" }
@@ -123,6 +154,7 @@ data CommandList u24 {
 	CMD_Peek, DoPeek
 	CMD_Poke, DoPoke
 	CMD_Reset, DoReset
+	CMD_Run, DoRun
 	CMD_Text, DoText
 	CMD_View, DoView
 	CMD_Wait, Wait

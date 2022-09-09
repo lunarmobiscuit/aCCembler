@@ -1,0 +1,42 @@
+/*
+ *  ROM for the mythical Apple ][4
+ *
+ *  OS4 subroutine vectors
+ *
+ */
+
+const os4_Reset					= $ff0002
+const os4_Wait					= $ff0005
+const os4_GetChar				= $ff0008
+const os4_PrintChar				= $ff000b
+const os4_PrintSpace			= $ff000e
+const os4_PrintCursor			= $ff0011
+const os4_ClearCursor			= $ff0014
+const os4_PrintString			= $ff0017
+const os4_PrintError			= $ff001a
+const os4_PrintHexDigit			= $ff001d
+const os4_PrintHexByte			= $ff0020
+const os4_PrintHexWord			= $ff0023
+const os4_PrintHex24			= $ff0026
+const os4_NextLine				= $ff0029
+const os4_ClearRow				= $ff002c
+const os4_ClearScreen			= $ff002f
+const os4_ScrollScreen			= $ff0032
+const os4_CompareText			= $ff0035
+const os4_CompareStartOfText	= $ff0038
+const os4_CopyString			= $ff003b
+const os4_CopyStringHigh		= $ff003e
+const os4_ParseNumber			= $ff0041
+const os4_ParseHexNumber		= $ff0044
+const os4_ParseDecimalNumber	= $ff0047
+const os4_Times10				= $ff004a
+const os4_Modulo				= $ff004d
+const os4_PlayBeep				= $ff0050
+const os4_AppleII4				= $ff0053
+
+const os4_Disk4Name				= $ff0100
+const os4_Disk4CatalogStart		= $ff0103
+const os4_Disk4CatalogNext		= $ff0106
+const os4_Disk4Open				= $ff0109
+const os4_Disk4Close			= $ff010c
+const os4_Disk4Read				= $ff010f

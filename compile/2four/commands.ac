@@ -606,6 +606,123 @@ sub DoPoke(ARGN %%0, CMD %%0.1, ADDRESS %%0.4, VALUE %%0.7) {
 
 
 /*
+ *  'run' filename
+ *
+ */
+sub DoRun(ARGN %%0, CMD %%0.1, FILENAME %%0.4) {
+	jsr NextLine
+
+	lda @ARGN							; must specify a filename
+	if (< 1) {
+		lda.t #NoFilenameErrStr
+		sta.t %%7
+		jsr PrintError
+		RETURN
+	}
+
+	lda.t @FILENAME						; filename exists?
+	if (==) {
+		lda #NoFilenameErrStr
+		sta.t %%7
+		jsr PrintError
+		RETURN
+	}
+
+	sta.t %%6
+	jsr Disk4Exists
+	if (!=) {
+		jsr Disk4PrintError
+		RETURN
+	}
+	lda.t DISK4_RAM						; The type is returned in $C800-$C802
+	cmp.t #$ced5d2						; "NUR" = "RUN" loaded as one little-endian 24-bit value
+	if (!=) {
+		lda.t #NotRUNFileError
+		sta.t %%7
+		jsr PrintError
+		RETURN
+	}
+
+	var FN = %R9.b
+	jsr Disk4Open
+	if (!=) {
+		jsr Disk4PrintError
+		RETURN
+	}
+	stx @FN
+
+	var R_IDX = %R3.t					; index of total bytes read across all loops
+	var ACTUAL = %R6.w					; actual bytes read per Disk4Read
+	var C_IDX = %R8.w					; bytes copied from the read buffer
+
+	stz.t @R_IDX
+	LOOP {
+		jsr Disk4Read
+		if (== DISK4_END_OF_FILE) {		; Until EOF
+			BREAK
+		}
+		lda.t DISK4_RET0				; Or check for zero byes (to be safe)
+		if (==) {
+			BREAK
+		}
+		sta.t @ACTUAL
+
+		stz.w @C_IDX
+		LOOP {
+			ldx.w #DISK4_RAM			; Load from $C800,Y
+			ldy.w @C_IDX
+			lda.a24 XY
+			inc.t @C_IDX
+
+			ldx.t #$10000				; Store in $10000 (after the first 64K ends)
+			ldy.t @R_IDX
+			sta.a24 XY
+			inc.t @R_IDX
+
+			ldy.w @C_IDX				; Until @C_IDX == @ACTUAL
+			cpy.w @ACTUAL
+			IF (==) {
+				BREAK
+			}
+		}
+	}
+
+	lda @FN
+	jsr Disk4Close
+
+	jsr NextLine
+
+	dec @ARGN							; Shift all the args down by one (the FILENAME becomes the CMD)
+	lda @ARGN
+	sta %R0
+	clc
+	adc %R0
+	adc %R0
+	adc.t #$D001
+	sta.t %R0
+	ldx.t #$D001
+	LOOP {								; End the loop at $D000 + (ARGN-1) * 3 + 1
+		ldy #3							; Copy $Dnnn+3 (XY) to #Dnnn (X)
+		lda.t XY
+		sta.t X
+
+		inx.t
+		inx.t
+		inx.t
+		cpx.t %R0
+		IF (>=) {
+			BREAK
+		}
+	}
+
+
+	jsr $10000							; Run the program
+
+	RETURN
+}
+
+
+/*
  *  'reset' - restarts at the beginning on the ROM
  *  @@@ Add a warm restart flag like on the ][+
  */

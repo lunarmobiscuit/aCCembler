@@ -63,7 +63,7 @@ sub Disk4CatalogStart() {
 }
 
 /*
- *  Return the next item in the catalog
+ *  Returns the next item in the catalog
  *    Type in 0xC800-0xC802
  *    Size in 0xC803-0xC805
  *    Name in 0xC806-
@@ -84,27 +84,35 @@ sub Disk4CatalogNext() {
 }
 
 /*
+ *  Returns the type and size of the file, if it exists
+ *    Type in 0xC800-0xC802
+ *    Size (chars) in 0xC803-0xC805
+ *    Size (24-bit value) in 0xC806-0xC807
+ *    Success/Error returned in A
+ */
+sub Disk4Exists(FILENAME %%6) {
+	jsr filenameToC800
+
+	lda #DISK4_EXISTS
+	sta DISK4_CMD
+	lda DISK4_GO
+	RETURN
+}
+
+/*
  *  Open a file
  *    Returns A = DISK4_SUCCESS or DISK4_ERR_NOT_FOUND
  *    Returns X = file number
  */
 sub Disk4Open(FILENAME %%6) {
-	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
-	ldx.t %%6
-	FOR Y = 0 TO 16 {			; Copy the filename into $C800
-		lda.a24 XY
-		sta PR_RAM,Y
-		if (==) {
-			BREAK
-		}
-	}
+	jsr filenameToC800
 
 	lda #DISK4_OPEN
 	sta DISK4_CMD
 	lda DISK4_GO
 	sta %R0
 	ldx DISK4_RET0
-	lda %R0						; this isn't superflous, the LDA/STA resets the Z flag
+	lda %R0						; the lda/sta isn't superflous, it resets the Z flag from DISK4_GO
 	RETURN
 }
 
@@ -137,6 +145,7 @@ sub Disk4Read() {		; @@@ TBD ADD (FN A)
 	RETURN DISK4_SUCCESS
 }
 
+
 /*
  *  Print the Disk4 error (@@@ add switch for error code)
  */
@@ -149,6 +158,26 @@ sub Disk4PrintError() {
 	}
 	sta.t %%7
 	jsr PrintError
+
+	RETURN
+}
+
+
+/*
+ *  Copies the filename to $C800
+ */
+sub filenameToC800(FILENAME %%6) {
+	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
+
+	ldx.t @FILENAME
+	FOR Y = 0 TO 16 {			; Copy the filename into $C800
+		lda.a24 XY
+		sta PR_RAM,Y
+		if (==) {
+			BREAK
+		}
+	}
+
 	RETURN
 }
 
