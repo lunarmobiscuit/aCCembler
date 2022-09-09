@@ -209,7 +209,7 @@ sub DoEcho(ARGN %%0, INPUT @$200) {
  *  'load' filename,address
  *
  */
-sub DoLoad(ARGN %%0, CMD %%00.1, FILENAME %%0.4, ADDRESS %%0.7) {
+sub DoLoad(ARGN %%0, CMD %%0.1, FILENAME %%0.4, ADDRESS %%0.7) {
 	jsr NextLine
 
 	lda @ARGN						; must specify a filename
@@ -312,7 +312,7 @@ sub DoLoad(ARGN %%0, CMD %%00.1, FILENAME %%0.4, ADDRESS %%0.7) {
 /*
  *  'view'
  */
-sub DoView(ARGN %%0, CMD %%00.1, FILENAME %%0.4) {
+sub DoView(ARGN %%0, CMD %%0.1, FILENAME %%0.4) {
 	jsr NextLine
 
 	lda @ARGN						; must specify a filename
@@ -335,7 +335,7 @@ sub DoView(ARGN %%0, CMD %%00.1, FILENAME %%0.4) {
 
 	var R_IDX 		= %R3.t				; index into the read buffer
 	var ACTUAL 		= %R6.t				; actual bytes read per Disk4Read
-	var LINENUM 	= %R9.b				; line count
+	var LINENUM 	= %%0.255.b			; line count
 
 	stz @LINENUM
 	LOOP {
@@ -396,10 +396,7 @@ sub DoView(ARGN %%0, CMD %%00.1, FILENAME %%0.4) {
 
 	RETURN
 }
-sub View_Paginate() {
-	var LINENUM 	= %R9.b	; line count
-	var STOP 		= %R10.b	; stop scrolling
-
+sub View_Paginate(LINENUM %%0.255.b) {
 	inc @LINENUM
 	lda @LINENUM				; Pause every N_LINES_PER_PAGE lines (not 24, as there is a header)
 	if (== N_LINES_PER_PAGE) {
@@ -424,10 +421,10 @@ sub View_Paginate() {
 /*
  *  'peek' addr[,addr] or addr[,+length]
  */
-sub DoPeek(ARGN %%0, CMD %%00.1, START_ADDR %%0.4, END_ADDR %%0.7) {
-	var LINENUM 	= %R9.b					; line count
-	var STOP 		= %R10.b				; stop scrolling
-	var CUR_ADDR 	= %R11.t				; current address
+sub DoPeek(ARGN %%0, CMD %%0.1, START_ADDR %%0.4, END_ADDR %%0.7) {
+	var LINENUM 	= %%0.255.b				; line count
+	var CUR_ADDR 	= %%0.252.t				; current address
+	var ADDR 		= %R3.t
 
 	lda @ARGN								; must specify a filename
 	if (< 1) {
@@ -445,20 +442,19 @@ sub DoPeek(ARGN %%0, CMD %%00.1, START_ADDR %%0.4, END_ADDR %%0.7) {
 	lda @ARGN								; and an address
 	if (>= 2) {
 		ldx.t @END_ADDR
-		lda X
+		lda.a24 X
 		cmp #'+'
 		if (==) {							; +length 
-			lda.t @END_ADDR					; address+1 to skip the '+'
-			inc
-			sta.t %%7
+			inx.t							; address+1 to skip the '+'
+			stx.t %%7
 			jsr ParseNumber
-			tax.t
-			lda.t @START_ADDR				; @END = @START + length
+			tax.t							; @END = @START + length
+			lda.t @START_ADDR
 			adx.t
 			sta.t @END_ADDR
 		}
 		ELSE {
-			sta.t %%7
+			stx.t %%7
 			jsr ParseNumber
 			sta.t @END_ADDR
 		}
@@ -470,17 +466,7 @@ sub DoPeek(ARGN %%0, CMD %%00.1, START_ADDR %%0.4, END_ADDR %%0.7) {
 		sta.t @END_ADDR
 	}
 
-lda.t @START_ADDR
-jsr PrintHex24
-lda #'-'H
-jsr PrintChar
-lda.t @END_ADDR
-jsr PrintHex24
-	jsr NextLine
-RETURN 0
-
 	stz @LINENUM
-	stz @STOP
 	lda.t @START_ADDR
 	sta.t @CUR_ADDR
 	LOOP {
@@ -501,9 +487,12 @@ RETURN 0
 	}
 	RETURN
 }
-sub Draw_Peek_Line() {
-	var ADDR = %R11.t				; starting address
-	var IDX = %R14.b
+sub Draw_Peek_Line(CUR_ADDR %%0.252.t) {
+	var IDX 		= %R0.b
+	var ADDR 		= %R3.t
+
+	lda.t @CUR_ADDR
+	sta.t @ADDR
 
 	lda #'$'H						; $addr- xx xx xx xx xx xx xx xx ........
 	jsr PrintChar
@@ -514,13 +503,13 @@ sub Draw_Peek_Line() {
 
 	FOR @IDX = 0 to 7 {				; Print the value as $HH
 		ldy @IDX
-		lda (@ADDR),Y
+		lda.a24 (@ADDR),Y
 		jsr PrintHexByte
 		jsr PrintSpace
 	}
 	FOR @IDX = 0 to 7 {
 		ldy @IDX
-		lda (@ADDR),Y
+		lda.a24 (@ADDR),Y
 		IF (< 128) {				; Print the (HIGH) ASCII equivalent of the value (except $00 = '.')
 			IF (== 0) {
 				lda #'.'H
@@ -535,9 +524,7 @@ sub Draw_Peek_Line() {
 	
 	RETURN
 }
-sub Loop_Paginate() {
-	var LINENUM 	= %R9.b					; line count
-
+sub Loop_Paginate(LINENUM %%0.255.b) {
 	inc @LINENUM
 	lda @LINENUM							; Pause every N_LINES_PER_PAGE lines (not 24, as there is a header)
 	if (== N_LINES_PER_PAGE) {
@@ -561,7 +548,9 @@ sub Loop_Paginate() {
 /*
  *  'poke' addr,value
  */
-sub DoPoke(ARGN %%0, CMD %%00.1, ADDRESS %%0.4, VALUE %%0.7) {
+sub DoPoke(ARGN %%0, CMD %%0.1, ADDRESS %%0.4, VALUE %%0.7) {
+	var CUR_ADDR 	= %%0.252.t			; current address
+
 	lda @ARGN							; must specify a filename
 	if (< 1) {
 		lda.t #NoAddressErrStr
@@ -588,22 +577,25 @@ sub DoPoke(ARGN %%0, CMD %%00.1, ADDRESS %%0.4, VALUE %%0.7) {
 
 	jsr NextLine
 
+	ldx.t @ADDRESS
 	lda.t @VALUE
-	IF (< 0x0FF) {
-		sta.b @ADDRESS
+	cmp.t #0xFF
+	IF (<) {
+		sta.a24.b X
 		bra +skip
 	}
-	IF (< 0x0FFFF) { // @@@ NEED ELSEIF
-		sta.w @ADDRESS
+	cmp.t #0xFFFF
+	IF (<) { 							;; @@@ NEED ELSEIF
+		sta.a24.w X
 	}
 	ELSE {
-		sta.t @ADDRESS
+		sta.a24.t X
 	}
   skip:
 
 	lda.t @ADDRESS
 	and.t #$FFFFF0
-	sta.t @ADDRESS
+	sta.t @CUR_ADDR
 	jsr Draw_Peek_Line
 	jsr NextLine
 	jsr NextLine
@@ -626,24 +618,24 @@ sub DoReset(ARGN %%0) {
 /*
  *  'text' - Switch to the TEXT screen (screen 1 or screen 2)
  */
-sub DoText(ARGN %%0, WHERE %%0.1) {
-	lda.t @ARGN
+sub DoText(ARGN %%0, CMD %%0.1, WHERE %%0.4) {
+	lda @ARGN
 	if (< 1) {
 		lda TXTPAGE1
 		stz @DISPMODE
 		RETURN
 	}
 
-	ldy #0
-	lda.a24 (@WHERE),Y
+	ldx.t @WHERE
+	lda.a24 X
 	cmp #'8'
 	if (==) {
 		ldy #1
-		lda.a24 (@WHERE),Y
+		lda.a24 XY
 		cmp #'0'
 		if (==) {
 			ldy #2
-			lda.a24 (@WHERE),Y
+			lda.a24 XY
 			if (==) {
 				// @@@ 80 column mode
 				// RETURN
@@ -657,7 +649,7 @@ sub DoText(ARGN %%0, WHERE %%0.1) {
 	cmp #'1'
 	if (==) {
 		ldy #1
-		lda.a24 (@WHERE),Y
+		lda.a24 XY
 		if (==) {
 			lda TXTPAGE1
 			stz @DISPMODE
@@ -667,7 +659,7 @@ sub DoText(ARGN %%0, WHERE %%0.1) {
 	cmp #'2'
 	if (==) {
 		ldy #1
-		lda.a24 (@WHERE),Y
+		lda.a24 XY
 		if (==) {
 			lda TXTPAGE2
 			lda #DISP_TEXT_2

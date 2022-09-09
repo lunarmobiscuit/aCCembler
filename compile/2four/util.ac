@@ -174,8 +174,7 @@ sub PrintHexDigit(nibble A.b) {
  */
 sub ParseNumber(STR %%7.t) {
 	ldx.t @STR
-	ldy #0
-	lda.a24 XY
+	lda.a24 X
 	cmp #'$'
 	IF (==) {						; $HEX value
 		jmp ParseHexNumber
