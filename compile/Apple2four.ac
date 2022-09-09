@@ -5,8 +5,6 @@
  *
  */
 
-#include "2four/regs_args.ac"
-
 const KBD			= $c000		// R last key pressed + 128
 const KBDSTRB		= $c010		// RW keyboard strobe
 const TAPEOUT		= $c020		// RW toggle caseette tape output
@@ -57,14 +55,14 @@ const N_COMMANDS	= 14		// The number of commands in CommandList
  *  The code begins with a JMPs to the OS functions
  *  followed by a table of addresses for JSR ($aaaa) indirect calls
  */
-sub Start @$FF0000 {
+sub Start() @$FF0000 {
 	jmp Reset
 }
 
 /*
  *  RST vector points here
  */
-sub Reset @$FF0200 {
+sub Reset() @$FF0200 {
 	cld
 	sta LANGSET					; turn on ][+ "upper" 16K (write twice)
 	sta LANGSET
@@ -101,7 +99,7 @@ sub Reset @$FF0200 {
 /*
  *  Echo the keys as they are typed and store in @TXTBUFFER
  */
-sub EchoKeys {
+sub EchoKeys() {
 	jsr ClearInputBuffers
 	LOOP {
 		jsr ScreenBase					; Set the @TEXTPTR based on @TXTROW
@@ -187,20 +185,20 @@ sub EchoKeys {
 /*
  *  Lookup and execute the typed command
  */
-sub CommandLine {
+sub CommandLine() {
 	var I	= @$04						; loop variable
 	var I6	= @$05						; I * 6
 
-	lda #@TXTBUFFER						; ARGT0 <- the command text
-	sta.t @ARGT0
+	lda #@TXTBUFFER						; %%0.1 <- the command text
+	sta.t %%0.1
 
-	lda #0								; ARGN <- the number of args (not including the command)
-	sta @ARGN
+	lda #0								; %%0 <- the number of args (not including the command)
+	sta %%0
 
-	ldy #3								; Index to the next ARGTn
+	ldy #3								; Index to the next %%0.parameter
 	ldx #0
 	LOOP {
-		lda @TXTBUFFER,x				; Look for a space and break into ARGTn
+		lda @TXTBUFFER,x				; Look for a space
 		IF (== 0) {
 			BREAK
 		}
@@ -223,11 +221,11 @@ sub CommandLine {
 			lda #@TXTBUFFER
 			clc
 			adx.w
-			sta.t.a16 @ARGT0,y
+			sta.t.a16 %%0.1,y			; CMD is %%0.1, ARG0 is %%0.4, ARG1 is %00.7, ... %%0.10, etc.
 			iny
 			iny
 			iny
-			inc @ARGN
+			inc %%0
 			inx
 			BREAK
 		}
@@ -239,7 +237,7 @@ sub CommandLine {
 	}
 
 	LOOP {
-		lda @TXTBUFFER,x				; Look for commas and break into ARGTn
+		lda @TXTBUFFER,x				; Look for a comma between args
 		IF (== 0) {
 			BREAK
 		}
@@ -250,7 +248,7 @@ sub CommandLine {
 			inx
 
 			LOOP {
-				lda @TXTBUFFER,x				; Skip over extra spaces
+				lda @TXTBUFFER,x			; Skip over extra spaces
 				IF (== 0) {
 					BREAK
 				}
@@ -266,11 +264,11 @@ sub CommandLine {
 			lda #@TXTBUFFER
 			clc
 			adx.w
-			sta.t.a16 @ARGT0,y
+			sta.t.a16 %%0.1,y			; CMD is %%0.1, ARG0 is %%0.4, ARG1 is %00.7, ... %%0.10, etc.
 			iny
 			iny
 			iny
-			inc @ARGN
+			inc %%0
 		}
 		inx								; DO WHILE X < 127 (leave one zero in the TEXT buffer)
 		cpx #127
@@ -279,9 +277,8 @@ sub CommandLine {
 		}
 	}
 
-	lda.t @ARGT1						; Save @ARGT1 as it's needed for CompareText
-	sta.t %R29
-
+	lda.t %%0.1							; strA for CompareText
+	sta.t %%7
 	FOR @I = 0 TO N_COMMANDS-1 {
 		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
 		A <<= 2
@@ -294,12 +291,9 @@ sub CommandLine {
 		tax
 
   		lda.t CommandList,X				; CommandList[X].string
-  		sta.t @ARGT1
+  		sta.t %%7.3
 		jsr CompareText
 		IF - {
-			lda.t %R29					; Restore @ARGT1
-			sta.t @ARGT1
-
 			ldx @I6
 	  		lda.t CommandList+3,X		; CommandList[X].func
 	  		sta.t %R0
@@ -313,12 +307,12 @@ sub CommandLine {
 /*
  *  Try and complete the command
  */
-sub CompleteCommand {
+sub CompleteCommand() {
 	var I	= @$04						; loop variable
 	var I6	= @$05						; I * 6
 
-	lda #@TXTBUFFER						; ARGT0 <- TEXT buffer
-	sta.t @ARGT0
+	lda #@TXTBUFFER						; %%7 <- TEXT buffer
+	sta.t %%7
 	FOR @I = 0 TO N_COMMANDS-1 {
 		lda @I							; X = @M$04 * 6 = (@M$04 * 4) + (@M$04 * 2)
 		A <<= 2
@@ -331,18 +325,18 @@ sub CompleteCommand {
 		tax
 
   		lda.t CommandList,X				; CommandList[X].string
-  		sta.t @ARGT1
+  		sta.t %%7.3
 		jsr CompareStartOfText
 		IF - {
 			ldx @I6
-	  		lda.t CommandList,X			; ARGT0 <- CommandList[X].string
-	  		sta.t @ARGT0
-			lda #@TXTBUFFER				; ARGT1 <- TEXT buffer
-			sta.t @ARGT1
+	  		lda.t CommandList,X			; %%0.1 <- CommandList[X].string
+	  		sta.t %%7
+			lda #@TXTBUFFER				; %%7.3 <- TEXT buffer
+			sta.t %%7.3
 			jsr CopyString
-			lda.w @TXTPTR				; ARGT1 <- Current line on TEXT screen
+			lda.w @TXTPTR				; @TXTPTR <- Current line on TEXT screen
 			inc.w						;  +1 for the cursor
-			sta.t @ARGT1
+			sta.t %%7.3
 			jsr CopyStringHigh
 			iny
 			sty @TXTPOS					; CopyString leaves the length of the string in Y

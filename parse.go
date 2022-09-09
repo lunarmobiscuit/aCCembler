@@ -34,7 +34,6 @@ func (p *parser) parseFile(filename string, buffer []uint8) error {
 				p.skip(1)
 				err := p.parseHashcode()
 				if (err != nil) {
-					fmt.Printf("ERROR in %s [line %d] -- %s\n", filename, p.n, err)
 					return err
 				}
 				continue
@@ -60,7 +59,7 @@ func (p *parser) parseFile(filename string, buffer []uint8) error {
 		case "global":
 			var label string
 			label = p.nextAZ_az_09()
-			err := p.parseVariable(nil, label)
+			err := p.parseVariable(VAR_GLOBAL, nil, label)
 			if (err != nil) {
 				fmt.Printf("ERROR in %s [line %d] -- %s\n", filename, p.n, err)
 				return err
@@ -205,15 +204,21 @@ func (p *parser) parseConstant(label string) error {
 	return nil
 }
 
+const (
+	VAR_GLOBAL = iota
+	VAR_PARAM
+	VAR_LOCAL
+)
+
 /*
  *  Parse a defined variable
  */
-func (p *parser) parseVariable(b *codeBlock, name string) error {
+func (p *parser) parseVariable(varType int, b *codeBlock, name string) error {
 	var keyword string
-	if (b == nil) {
-		keyword = "global"
-	} else {
-		keyword = "var"
+	switch (varType) {
+	case VAR_GLOBAL: keyword = "global"
+	case VAR_PARAM: keyword = "param"
+	case VAR_LOCAL: keyword = "var"
 	}
 
 	if (name == "") {
@@ -237,14 +242,21 @@ func (p *parser) parseVariable(b *codeBlock, name string) error {
 	}
 
 	// = value
-	if (p.peekChar() != '=') {
-		return fmt.Errorf("%s '%s' is missing a '='", keyword, name)
+	if (varType != VAR_PARAM) {
+		if (p.peekChar() != '=') {
+			return fmt.Errorf("%s '%s' is missing a '='", keyword, name)
+		}
+		p.skip(1)
 	}
-	p.skip(1)
 
 	var address int
+	addtoBlock := true
 	p.skipWhitespace()
-	if (p.peekChar() == '@') {
+	sym := p.peekChar()
+	if (sym == 'A' || sym == 'a') || (sym == 'X' || sym == 'x') || (sym == 'Y' || sym == 'y') {
+		p.skip(1)
+		addtoBlock = false
+	} else if (sym == '@') {
 		p.skip(1)
 
 		// M@$aaaa
@@ -264,46 +276,60 @@ func (p *parser) parseVariable(b *codeBlock, name string) error {
 				}
 			}
 		}
-	} else if (p.peekChar() == '%') && ((p.peekAhead(1) == 'R') || (p.peekAhead(1) == 'r')) {
-		p.skip(2)
+	} else if (p.peekChar() == '%') {
+		p.skip(1)
 
-		// %Rn
-		address, err = p.nextValue()
+		// %Rn or %%Dn.k
+		address, err = p.parseRegisterOrParameter()
 		if (err != nil) {
-			return fmt.Errorf("%s '%s' specifies an invalid address", keyword, name)
+			return err
 		}
 	} else {
-		return fmt.Errorf("%s '%s' is missing a '@' or '%cR'", keyword, name, '%')
+		return fmt.Errorf("%s '%s' is missing a '@' or '%%R' or '%%n.k'", keyword, name)
 	}
 
 	// Optional size
 	size := p.parseOpWidth()
 
-	// Skip until the next parsable character
-	p.skipWhitespaceAndEOL()
+	// Skip either until after the ',' or after the newline
+	if (varType == VAR_PARAM) {
+		p.skipWhitespace()
+		if (p.peekChar() == ')') {
+			// leave this to stop the parameter processing loop
+		} else if (p.peekChar() == ',') {
+			p.skip(1)
+			p.skipWhitespace()
+		} else {
+			return fmt.Errorf("%s '%s' is missing a ','", keyword, name)
+		}
+	} else {
+		p.skipWhitespaceAndEOL()
+	}
 
 	// Store this variable (either as a global or local to a block)
-	vrbl := new(vrbl)
-	if (b == nil) {
-		if p.global == nil {
-			p.global = vrbl
-		} else if p.lastGlobal != nil {
-			p.lastGlobal.next = vrbl
+	if (addtoBlock) {
+		vrbl := new(vrbl)
+		if (varType == VAR_GLOBAL) {
+			if p.global == nil {
+				p.global = vrbl
+			} else if p.lastGlobal != nil {
+				p.lastGlobal.next = vrbl
+			}
+			p.lastGlobal = vrbl
+		} else {
+			if b.vrbl == nil {
+				b.vrbl = vrbl
+			} else if b.lastVrbl != nil {
+				b.lastVrbl.next = vrbl
+			}
+			b.lastVrbl = vrbl
 		}
-		p.lastGlobal = vrbl
-	} else {
-		if b.vrbl == nil {
-			b.vrbl = vrbl
-		} else if b.lastVrbl != nil {
-			b.lastVrbl.next = vrbl
-		}
-		b.lastVrbl = vrbl
+		vrbl.next = nil
+		vrbl.name = name
+		vrbl.nameLC = nameLC
+		vrbl.address = address
+		vrbl.size = size
 	}
-	vrbl.next = nil
-	vrbl.name = name
-	vrbl.nameLC = nameLC
-	vrbl.address = address
-	vrbl.size = size
 
 	return nil
 }
@@ -313,11 +339,23 @@ func (p *parser) parseVariable(b *codeBlock, name string) error {
  */
 func (p *parser) parseSubroutineBlock(label string) error {
 	if (label == "") {
-		return errors.New("sub is missing a name")
+		return errors.New("'sub' is missing a name")
 	}
 
 	// Skip past whitespace
 	p.skipWhitespace()
+
+	block := new(codeBlock)
+
+	// Input variables
+	if (p.peekChar() == '(') {
+		p.skip(1)
+		err := p.parseParameters(block)
+		if (err != nil) {
+			return err
+		}
+		p.skipWhitespace()
+	}
 
 	// Optional @ADDR
 	address := 0
@@ -326,7 +364,7 @@ func (p *parser) parseSubroutineBlock(label string) error {
 		var err error
 		address, err = p.nextValue()
 		if (err != nil) {
-			return errors.New("'@'' does not specify a value")
+			return fmt.Errorf("'sub %s @' does not specify an address value", label)
 		}
 		p.skipWhitespace()
 	} else {
@@ -349,7 +387,6 @@ func (p *parser) parseSubroutineBlock(label string) error {
 	p.skipWhitespaceAndEOL()
 
 	// Store this code block
-	block := new(codeBlock)
 	if p.code == nil {
 		p.code = block
 		block.prev = nil
@@ -431,6 +468,28 @@ func (p *parser) parseCode(label string) error {
 	}
 
 	return errors.New("unexpected end of file within {...}")
+}
+
+/*
+ *  Parse the parameters to a subroutine
+ *  e.g. (row A) or (row X, col Y) or (argn @$D200.b, arg1 @$D201.w, arg2 @$D203.t)
+ */
+func (p *parser) parseParameters(block *codeBlock) error {
+	var err error
+
+	for {
+		if (p.peekChar() == ')') {
+			p.skip(1)
+			return nil
+		}
+
+		var label string
+		label = p.nextAZ_az_09()
+		err = p.parseVariable(VAR_PARAM, block, label)
+		if (err != nil) {
+			return err
+		}
+	}
 }
 
 /*
@@ -652,7 +711,11 @@ func (b *dataBlock) addData(size int, value int, str string, len int) {
  */
 func (p *parser) endestAddr() int {
 	if (p.lastData == nil) {
-		return p.lastCode.endAddr
+		if (p.lastCode == nil) {
+			return 0
+		} else {
+			return p.lastCode.endAddr
+		}
 	} else if (p.lastCode == nil) {
 		return p.lastData.endAddr
 	} else if (p.lastCode.endAddr > p.lastData.endAddr) {

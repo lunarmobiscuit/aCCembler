@@ -86,7 +86,7 @@ func (p *parser) resolveCodeSymbols(b *codeBlock) error {
 		}
 
 		// Skip XY modes
-		if (i.addressMode == modeXY) || (i.addressMode == modeIndirectXY) || (i.addressMode == modeIndexedIndirectXY) {
+		if (i.addressMode == modeX) || (i.addressMode == modeXY) {
 			continue
 		}
 
@@ -500,12 +500,10 @@ func (p *parser) outputCodeBlock(b *codeBlock, out *os.File, listing *os.File) e
 				} else {
 					args += fmt.Sprintf(" ($%06x,X)", i.value)
 				}
+			case modeX:
+				args += fmt.Sprintf(" X")
 			case modeXY:
 				args += fmt.Sprintf(" XY")
-			case modeIndirectXY:
-				args += fmt.Sprintf(" (XY)")
-			case modeIndexedIndirectXY:
-				args += fmt.Sprintf(" (X),Y")
 			}
 			line += args
 

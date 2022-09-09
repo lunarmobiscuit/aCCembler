@@ -39,26 +39,23 @@ const DISK4_ERR_READ_ERROR	= 4
 
 /*
  *  Ask for the disk name
- *    Name in @ARGT0 (pointing to 0xC800)
+ *    Name returned in X (pointing to 0xC800)
  */
-sub Disk4Name {
+sub Disk4Name() {
 	lda #DISK4_VOLUME_NAME
 	sta DISK4_CMD
 	lda DISK4_GO
 	sta %R0
 
 	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
-	lda.w #PR_RAM
-	sta.t @ARGT0
-
-	lda %R0 
+	ldx.w #PR_RAM
 	RETURN
 }
 
 /*
  *  Start a disk catalog
  */
-sub Disk4CatalogStart {
+sub Disk4CatalogStart() {
 	lda #DISK4_CATALOG
 	sta DISK4_CMD
 	lda DISK4_GO
@@ -69,32 +66,33 @@ sub Disk4CatalogStart {
  *  Return the next item in the catalog
  *    Type in 0xC800-0xC802
  *    Size in 0xC803-0xC805
- *    Name in @ARGT0 (pointing to 0xC806)
+ *    Name in 0xC806-
+ *    Success/Error returned in A
+ *    Name address returned in X (pointing to 0xC806)
  */
-sub Disk4CatalogNext {
+sub Disk4CatalogNext() {
 	lda #DISK4_CATALOG_NEXT
 	sta DISK4_CMD
 	lda DISK4_GO
 	sta %R0
 
 	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
-	lda.w #PR_RAM+6
-	sta.t @ARGT0
+	ldx.w #PR_RAM+6				; Return the address of the 
 
-	lda %R0 
+	lda %R0
 	RETURN
 }
 
 /*
  *  Open a file
- *    ARGT0 = filename
  *    Returns A = DISK4_SUCCESS or DISK4_ERR_NOT_FOUND
  *    Returns X = file number
  */
-sub Disk4Open {
+sub Disk4Open(FILENAME %%6) {
 	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
+	ldx.t %%6
 	FOR Y = 0 TO 16 {			; Copy the filename into $C800
-		lda.a24 (@ARG0),Y
+		lda.a24 XY
 		sta PR_RAM,Y
 		if (==) {
 			BREAK
@@ -104,16 +102,17 @@ sub Disk4Open {
 	lda #DISK4_OPEN
 	sta DISK4_CMD
 	lda DISK4_GO
+	sta %R0
 	ldx DISK4_RET0
+	lda %R0						; this isn't superflous, the LDA/STA resets the Z flag
 	RETURN
 }
 
 
 /*
  *  Close a file
- *    A = file number
  */
-sub Disk4Close {
+sub Disk4Close(FN A) {
 	sta DISK4_ARG0
 	lda #DISK4_CLOSE
 	sta DISK4_CMD
@@ -124,46 +123,31 @@ sub Disk4Close {
 
 /*
  *  Read a file
+ *    Returns number of bytes in @DISK4_RET0
+ *    Returns the bytes in @DISK4_RAM
  */
-sub Disk4Read {
+sub Disk4Read() {		; @@@ TBD ADD (FN A)
 	lda #DISK4_READ
 	sta DISK4_CMD
 	lda DISK4_GO
 	IF (!=) {
 		RETURN
 	}
-	lda.t DISK4_RET0			; RET0 has the number of bytes actually read
-	sta.t %R0
-
 	lda SLOT_7_ROM				; Activate the Disk4 $C800 RAM
-	FOR Y = 0 TO 1048576 {
-lda.t %R0
-tya.t
-cmp.t %R0
-		cpy.t %R0				; RET0 has the number of bytes actually read
-		if (==) {
-			BREAK
-		}
-
-		lda.a24.t PR_RAM,Y
-		sta.a24.t (@ARG0),Y
-sta.a24.t $8000,Y
-	}
-
 	RETURN DISK4_SUCCESS
 }
 
 /*
  *  Print the Disk4 error (@@@ add switch for error code)
  */
-sub Disk4PrintError {
+sub Disk4PrintError() {
 	IF (== DISK4_ERR_NOT_FOUND) {
 		lda.t #Disk4ErrorNotFoundStr	
 	}
 	ELSE {
 		lda.t #Disk4ErrorStr	
 	}
-	sta.t @ARGT0
+	sta.t %%7
 	jsr PrintError
 	RETURN
 }

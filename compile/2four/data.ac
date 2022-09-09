@@ -95,7 +95,7 @@ data BeepTimes byte {
 
 
 /*
- *  The list of (11) commands
+ *  The list of commands
  */
 data CMD_Help string { "?" }
 data CMD_Ascii string { "ascii" }
@@ -111,7 +111,6 @@ data CMD_Text string { "text" }
 data CMD_Wait string { "wait" }
 data CMD_View string { "view" }
 data CMD_2Plus string { "2+" }
-data CMD_Zzz string { "zzz" }
 
 data CommandList u24 {
 	CMD_Help, DoHelp
@@ -128,13 +127,4 @@ data CommandList u24 {
 	CMD_View, DoView
 	CMD_Wait, Wait
 	CMD_2Plus, Do2Plus
-	CMD_Zzz, DoZzz
 }
-
-data TestStr1 string { "1" }
-data TestStr2 string { "10" }
-data TestStr3 string { "100" }
-data TestStr4 string { "12" }
-data TestStr5 string { "123" }
-data TestStr6 string { "54321" }
-data TestStr7 string { "7654321" }

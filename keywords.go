@@ -86,7 +86,7 @@ func (p *parser) parseKeyword(token string) error {
  */
 func (p *parser) parseLocalVariable(token string) error {
 	p.skipWhitespace()
-	return p.parseVariable(p.currentCode, p.nextAZ_az_09())
+	return p.parseVariable(VAR_LOCAL, p.currentCode, p.nextAZ_az_09())
 }
 
 /*
@@ -308,11 +308,11 @@ func (p *parser) parseFor(token string) error {
 		if (forAddress <= 0xff) { forAddressMode = modeZeroPage } else { forAddressMode = modeAbsolute }
 		forIsMemory = true
 		forMRegStr = fmt.Sprintf("@%s", symbol)
-	} else if (sym1 == '%') && ((sym2 == 'R') || (sym2 == 'r')) {
-		p.skip(2)
-		forAddress, err := p.nextValue()
+	} else if (sym1 == '%') {
+		p.skip(1)
+		forAddress, err = p.parseRegisterOrParameter()
 		if (err != nil) {
-			return fmt.Errorf("invalid register '%R%c'", p.peekChar())
+			return err
 		}
 		forAddressMode = modeZeroPage
 		forIsMemory = true
@@ -393,11 +393,11 @@ func (p *parser) parseFor(token string) error {
 		}
 		if (end <= 0xff) { forAddressMode = modeZeroPage } else { forAddressMode = modeAbsolute }
 		endIsMemory = true
-	} else if (sym1 == '%') && ((sym2 == 'R') || (sym2 == 'r')) {
-		p.skip(2)
-		end, err = p.nextValue()
+	} else if (sym1 == '%') {
+		p.skip(1)
+		end, err = p.parseRegisterOrParameter()
 		if (err != nil) {
-			return fmt.Errorf("invalid register '%R%c'", p.peekChar())
+			return err
 		}
 		forAddressMode = modeZeroPage
 		endIsMemory = true

@@ -45,9 +45,8 @@ const (
 	modeIndirectZeroPage
 	modeAbsoluteIndexedIndirectX
 	// Added on the 65c2402
+	modeX
 	modeXY
-	modeIndirectXY
-	modeIndexedIndirectXY
 )
 
 // All the valid assembly language mnemonics
@@ -257,6 +256,12 @@ var opCMP = []opcode {
 	{modeIndirectZeroPage, A16, 0xD2, 2}, {modeIndirectZeroPage, A24, 0xD2, 3},
 		{modeIndirectZeroPage, R16, 0xD2, 3}, {modeIndirectZeroPage, R24, 0xD2, 3},
 		{modeIndirectZeroPage, W16, 0xD2, 3}, {modeIndirectZeroPage, W24, 0xD2, 3},
+	{modeX, A16, 0x9B, 1}, {modeX, A24, 0x9B, 2},
+		{modeX, R16, 0x9B, 2}, {modeX, R24, 0x9B, 2},
+		{modeX, W16, 0x9B, 2}, {modeX, W24, 0x9B, 2},
+	{modeXY, A16, 0xCB, 1}, {modeXY, A24, 0xCB, 2},
+		{modeXY, R16, 0xCB, 2}, {modeXY, R24, 0xCB, 2},
+		{modeXY, W16, 0xCB, 2}, {modeX, W24, 0xCB, 2},
 }
 var opCPX = []opcode {
 	{modeImmediate, R08, 0xE0, 2}, {modeImmediate, R16, 0xE0, 4}, {modeImmediate, R24, 0xE0, 5},
@@ -411,15 +416,12 @@ var opLDA = []opcode {
 	{modeIndirectZeroPage, A16, 0xB2, 2}, {modeIndirectZeroPage, A24, 0xB2, 3},
 		{modeIndirectZeroPage, R16, 0xB2, 3}, {modeIndirectZeroPage, R24, 0xB2, 3},
 		{modeIndirectZeroPage, W16, 0xB2, 3}, {modeIndirectZeroPage, W24, 0xB2, 3},
-	{modeXY, A16, 0x7B, 1}, {modeXY, A24, 0x7B, 2},
-		{modeXY, R16, 0x7B, 2}, {modeXY, R24, 0x7B, 2},
-		{modeXY, W16, 0x7B, 2}, {modeXY, W24, 0x7B, 2},
-	{modeIndirectXY, A16, 0x9B, 1}, {modeIndirectXY, A24, 0x9B, 2},
-		{modeIndirectXY, R16, 0x9B, 2}, {modeIndirectXY, R24, 0x9B, 2},
-		{modeIndirectXY, W16, 0x9B, 2}, {modeIndirectXY, W24, 0x9B, 2},
-	{modeIndexedIndirectXY, A16, 0xBB, 1}, {modeIndexedIndirectXY, A24, 0xBB, 2},
-		{modeIndexedIndirectXY, R16, 0xBB, 2}, {modeIndexedIndirectXY, R24, 0xBB, 2},
-		{modeIndexedIndirectXY, W16, 0xBB, 2}, {modeIndexedIndirectXY, W24, 0xBB, 2},
+	{modeX, A16, 0x7B, 1}, {modeX, A24, 0x7B, 2},
+		{modeX, R16, 0x7B, 2}, {modeX, R24, 0x7B, 2},
+		{modeX, W16, 0x7B, 2}, {modeX, W24, 0x7B, 2},
+	{modeXY, A16, 0xAB, 1}, {modeXY, A24, 0xAB, 2},
+		{modeXY, R16, 0xAB, 2}, {modeXY, R24, 0xAB, 2},
+		{modeXY, W16, 0xAB, 2}, {modeXY, W24, 0xAB, 2},
 }
 var opSTA = []opcode {
 	{modeZeroPage, R08, 0x85, 2}, {modeZeroPage, R16, 0x85, 3}, {modeZeroPage, R24, 0x85, 3},
@@ -444,15 +446,12 @@ var opSTA = []opcode {
 	{modeIndirectZeroPage, A16, 0x92, 2}, {modeIndirectZeroPage, A24, 0x92, 3},
 		{modeIndirectZeroPage, R16, 0x92, 3}, {modeIndirectZeroPage, R24, 0x92, 3},
 		{modeIndirectZeroPage, W16, 0x92, 3}, {modeIndirectZeroPage, W24, 0x92, 3},
-	{modeXY, A16, 0x8B, 1}, {modeXY, A24, 0x8B, 2},
-		{modeXY, R16, 0x8B, 2}, {modeXY, R24, 0x8B, 2},
-		{modeXY, W16, 0x8B, 2}, {modeXY, W24, 0x8B, 2},
-	{modeIndirectXY, A16, 0xAB, 1}, {modeIndirectXY, A24, 0xAB, 2},
-		{modeIndirectXY, R16, 0xAB, 2}, {modeIndirectXY, R24, 0xAB, 2},
-		{modeIndirectXY, W16, 0xAB, 2}, {modeIndirectXY, W24, 0xAB, 2},
-	{modeIndexedIndirectXY, A16, 0xCB, 1}, {modeIndexedIndirectXY, A24, 0xCB, 2},
-		{modeIndexedIndirectXY, R16, 0xCB, 2}, {modeIndexedIndirectXY, R24, 0xCB, 2},
-		{modeIndexedIndirectXY, W16, 0xCB, 2}, {modeIndexedIndirectXY, W24, 0xCB, 2},
+	{modeX, A16, 0x8B, 1}, {modeX, A24, 0x8B, 2},
+		{modeX, R16, 0x8B, 2}, {modeX, R24, 0x8B, 2},
+		{modeX, W16, 0x8B, 2}, {modeX, W24, 0x8B, 2},
+	{modeXY, A16, 0xBB, 1}, {modeXY, A24, 0xBB, 2},
+		{modeXY, R16, 0xBB, 2}, {modeXY, R24, 0xBB, 2},
+		{modeXY, W16, 0xBB, 2}, {modeXY, W24, 0xBB, 2},
 }
 var opLDX = []opcode {
 	{modeImmediate, R08, 0xA2, 2}, {modeImmediate, R16, 0xA2, 4}, {modeImmediate, R24, 0xA2, 5},
@@ -816,6 +815,56 @@ func (p *parser) parseOpWidthOnce() int {
 	return A16
 }
 
+
+/*
+ *  Return the register or parameter address, i.e. the %Rn or %%n.k syntax
+ *  (returning the address or any error)
+ */
+func (p *parser) parseRegisterOrParameter() (int, error) {
+	sym := p.peekChar()
+
+	// register, e.g. %R1 = $01
+	if ((sym == 'R') || (sym == 'r')) {
+		p.skip(1)
+
+		address, err := p.nextValue()
+		if (err != nil) {
+			return 0, fmt.Errorf("invalid register '%R%c'", p.peekChar())
+		}
+		return address, nil
+	}
+
+	// parameter %%n.n, e.g. %%0 = $D000 or %%7.1 = $D701 or %%8.$FF = $D8FF
+	if (sym == '%') {
+		p.skip(1)
+
+		base, err := p.nextValue()
+		if (err != nil) {
+			return 0, fmt.Errorf("invalid subroutine parameter '%%%%%c'", p.peekChar())
+		}
+		if (base > 8) {
+			return 0, fmt.Errorf("invalid value %%%%%d, must instead be %%%%0. through %%%%8.", base)
+		}
+
+		offset := 0
+		sym := p.peekChar()
+		sym1 := p.peekAhead(1)
+		if (sym == '.') && ((sym1 == '$') || ((sym1 >= '0') && (sym1 <= '9'))) {
+			p.skip(1)
+
+			offset, err = p.nextValue()
+			if (err != nil) {
+				return 0, fmt.Errorf("invalid subroutine parameter '%%%%%d.%c'", base, p.peekChar())
+			}
+		}
+
+		return 0xD000 | (base << 8) | offset, nil
+	}
+
+	return 0, fmt.Errorf("expected %%R or %%%%, not %%%c", sym)
+}
+
+
 /*
  *  Parse the arguments after the mnemonic
  */
@@ -826,9 +875,6 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 	args.size = p.abWidth
 	sym := p.peekChar()
 	sym1 := p.peekAhead(1)
-	sym2 := p.peekAhead(2)
-	sym3 := p.peekAhead(3)
-	sym4 := p.peekAhead(4)
 	if (sym == ';') || (sym == '/') || (sym == CR) || (sym == LF) { // mmm
 		args.mode = modeImplicit
 		args.size = A16
@@ -836,13 +882,9 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 		p.skip(2)
 		args.mode = modeXY
 		args.size = A16 // require the .suffix
-	} else if (sym == '(') && ((sym1 == 'X') || (sym1 == 'x')) && ((sym2 == 'Y') || (sym2 == 'y')) && (sym3 == ')')  { // mmm (XY)
-		p.skip(4)
-		args.mode = modeIndirectXY
-		args.size = A16 // require the .suffix
-	} else if (sym == '(') && ((sym1 == 'X') || (sym1 == 'x')) && (sym2 == ')') && (sym3 == ',') && ((sym4 == 'Y') || (sym4 == 'y'))  { // mmm (X),Y
-		p.skip(5)
-		args.mode = modeIndexedIndirectXY
+	} else if ((sym == 'X') || (sym == 'x'))  { // mmm X
+		p.skip(2)
+		args.mode = modeX
 		args.size = A16 // require the .suffix
 	} else if (sym == '+') || (sym == '-') { // bmm +$aa or bmm -$aa or bmm +$aaaa or bmm -$aaaa
 		p.skip(1)
@@ -912,9 +954,9 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.value = address
 			args.size |= size
 			args.hasValue = true
-		} else if (sym == '%') && ((sym1 == 'R') || (sym1 == 'r')) {
-			p.skip(2)
-			value, err := p.nextValue()
+		} else if (sym == '%') {
+			p.skip(1)
+			value, err := p.parseRegisterOrParameter()
 			if (err != nil) {
 				return args, err
 			}
@@ -976,9 +1018,9 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.value = address
 			args.size |= size
 			args.hasValue = true
-		} else if (sym == '%') && ((sym1 == 'R') || (sym1 == 'r')) {
-			p.skip(2)
-			value, err := p.nextValue()
+		} else if (sym == '%') {
+			p.skip(1)
+			value, err := p.parseRegisterOrParameter()
 			if (err != nil) {
 				return args, err
 			}
@@ -1068,9 +1110,9 @@ func (p *parser) parseArgs() (assemblyArgs, error) {
 			args.value = address
 			args.size |= size
 			args.hasValue = true
-		} else if (sym == '%') && ((sym1 == 'R') || (sym1 == 'r')) {
-			p.skip(2)
-			value, err := p.nextValue()
+		} else if (sym == '%') {
+			p.skip(1)
+			value, err := p.parseRegisterOrParameter()
 			if (err != nil) {
 				return args, err
 			}
@@ -1308,9 +1350,8 @@ func addressModeStr(mode int) string {
 		case modeIndirectIndexedY: return "mmm ($aa),Y [indirect Y]"
 		case modeIndirectZeroPage: return "mmm ($zz) [indirect zero page]"
 		case modeAbsoluteIndexedIndirectX: return "mmm ($aaaa,X) [absolute indexed indirect X]"
+		case modeX: return "mmm X [address X]"
 		case modeXY: return "mmm XY [address X+Y]"
-		case modeIndirectXY: return "mmm (XY) [indirect X+Y]"
-		case modeIndexedIndirectXY: return "mmm (X),Y [indexed indirect (X)+Y]"
 	}
 }
 
