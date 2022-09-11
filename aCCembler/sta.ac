@@ -1,0 +1,11 @@
+sub Start @$FF0000 {
+	sta $20,Y
+	sta.w $20,Y
+	sta.t $20,Y
+	sta.a16 $20,Y
+	sta.a24 $20,Y
+	sta.a16.w $20,Y
+	sta.a24.w $20,Y
+	sta.a16.t $20,Y
+	sta.a24.t $20,Y
+}

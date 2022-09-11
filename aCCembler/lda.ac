@@ -1,0 +1,10 @@
+global HERE = @$200
+
+sub Start @$FF0000 {
+	lda @HERE
+	lda.b #@HERE
+	lda.w @HERE
+	lda.w #@HERE
+	lda.t @HERE
+	;lda.t #@HERE
+}

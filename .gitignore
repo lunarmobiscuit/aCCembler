@@ -19,3 +19,5 @@ compile/lda.pom
 compile/sta.lst
 compile/sta.out
 compile/sta.pom
+compile/compile
+compile/2four/commands.ac
