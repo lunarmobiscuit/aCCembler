@@ -858,6 +858,21 @@ func (p *parser) parseRegisterOrParameter() (int, error) {
 			}
 		}
 
+		sym = p.peekChar()
+		if (sym == '+') || (sym == '-') {
+			p.skip(1)
+			p.skipWhitespace()
+			plus, err := p.nextValue()
+			if (err != nil) {
+				return 0, fmt.Errorf("invalid additional offset '%%%%%d.%d+%c'", base, offset, p.peekChar())
+			}
+			if (sym == '-') {
+				offset -= plus
+			} else {
+				offset += plus
+			}
+		}
+
 		return 0xD000 | (base << 8) | offset, nil
 	}
 
